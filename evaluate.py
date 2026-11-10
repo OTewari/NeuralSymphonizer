@@ -75,13 +75,28 @@ def features(events):
 def pooled(paths):
     total = collections.defaultdict(collections.Counter)
     notes = onsets = 0
+    density = []
     for p in paths:
         ev = read_events(p)
         onsets += len(ev)
-        notes += sum(len(x[1]) for x in ev)
+        n = sum(len(x[1]) for x in ev)
+        notes += n
+        if len(ev) > 1:
+            density.append(n / max(ev[-1][0] - ev[0][0], 1e-6))  # notes per beat
         for k, c in features(ev).items():
             total[k].update(c)
+    total["_density"] = density
     return total, notes, onsets
+
+
+def _spread(values):
+    """Coefficient of variation (std / mean) of per-file note density."""
+    return float(numpy.std(values) / numpy.mean(values)) if len(values) > 1 else 0.0
+
+
+def _outlier_share(pitches, lo, hi):
+    total = sum(pitches.values()) or 1
+    return sum(c for p, c in pitches.items() if p < lo or p > hi) / total
 
 
 def overlap(a, b):
@@ -95,6 +110,9 @@ FEATURES = ["pitch", "pitch_class", "interval", "polyphony", "ioi", "note_length
 
 def evaluate(reference_paths, sets):
     ref, ref_notes, ref_onsets = pooled(reference_paths)
+    # pitch range holding 98% of the reference notes (1st to 99th percentile)
+    ref_p = numpy.repeat(list(ref["pitch"].keys()), list(ref["pitch"].values()))
+    lo, hi = numpy.percentile(ref_p, 1), numpy.percentile(ref_p, 99)
     rows = {}
     for name, paths in sets.items():
         gen, n, o = pooled(paths)
@@ -102,22 +120,28 @@ def evaluate(reference_paths, sets):
         row["mean"] = round(float(numpy.mean([row[k] for k in FEATURES])), 3)
         rep = gen["repetition"]
         row["repeat_share"] = round(rep["repeat"] / max(1, sum(rep.values())), 3)
+        row["outlier_share"] = round(_outlier_share(gen["pitch"], lo, hi), 4)
+        row["density_spread"] = round(_spread(gen["_density"]), 3)
         row["files"], row["notes"], row["notes_per_onset"] = len(paths), n, round(n / max(1, o), 2)
         rows[name] = row
     rr = ref["repetition"]
     reference = {"files": len(reference_paths), "notes": ref_notes, "notes_per_onset": round(ref_notes / ref_onsets, 2),
-                 "repeat_share": round(rr["repeat"] / max(1, sum(rr.values())), 3)}
+                 "repeat_share": round(rr["repeat"] / max(1, sum(rr.values())), 3),
+                 "outlier_share": round(_outlier_share(ref["pitch"], lo, hi), 4),
+                 "density_spread": round(_spread(ref["_density"]), 3), "pitch_range_98pct": [float(lo), float(hi)]}
     return reference, rows
 
 
 def markdown(reference, rows):
-    head = ["set", *FEATURES, "mean", "repeat share", "notes/onset", "files"]
+    head = ["set", *FEATURES, "mean", "repeat share", "outside 98% range", "density spread", "notes/onset", "files"]
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for name, r in rows.items():
         lines.append("| " + " | ".join([name] + [f"{r[k]:.3f}" for k in FEATURES + ["mean"]]
-                                       + [f"{r['repeat_share']:.3f}", f"{r['notes_per_onset']}", str(r["files"])]) + " |")
+                                       + [f"{r['repeat_share']:.3f}", f"{r['outlier_share']:.3f}",
+                                          f"{r['density_spread']:.2f}", f"{r['notes_per_onset']}", str(r["files"])]) + " |")
     lines.append(f"| reference ({reference['files']} real pieces) | " + " | ".join(["1.000"] * (len(FEATURES) + 1))
-                 + f" | {reference['repeat_share']:.3f} | {reference['notes_per_onset']} | {reference['files']} |")
+                 + f" | {reference['repeat_share']:.3f} | {reference['outlier_share']:.3f}"
+                 f" | {reference['density_spread']:.2f} | {reference['notes_per_onset']} | {reference['files']} |")
     return "\n".join(lines)
 
 
@@ -128,15 +152,22 @@ def main(argv=None):
     p.add_argument("--config", default=os.path.join("results", "stage2-rhythm-transpose", "model", "config.json"))
     p.add_argument("--midi-dir", default="midi_files")
     p.add_argument("--sets", nargs="+", required=True, help='"name=glob" pairs of generated files')
+    p.add_argument("--real-sample", type=int, default=0,
+                   help="also score N real training pieces (seeded choice) as a ceiling")
     p.add_argument("--json", help="also write the results to this JSON file")
     args = p.parse_args(argv)
 
+    with open(args.config, encoding="utf-8") as fh:
+        config = json.load(fh)
     if args.reference == ["held-out"]:
-        with open(args.config, encoding="utf-8") as fh:
-            ref = [os.path.join(args.midi_dir, n) for n in json.load(fh)["val_pieces"]]
+        ref = [os.path.join(args.midi_dir, n) for n in config["val_pieces"]]
     else:
         ref = sorted(f for g in args.reference for f in glob.glob(g))
     sets = {}
+    if args.real_sample:
+        import random
+        chosen = random.Random(0).sample(sorted(config["train_pieces"]), args.real_sample)
+        sets[f"real training pieces ({args.real_sample})"] = [os.path.join(args.midi_dir, n) for n in chosen]
     for s in args.sets:
         name, pattern = s.split("=", 1)
         sets[name] = sorted(glob.glob(pattern))

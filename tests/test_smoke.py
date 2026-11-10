@@ -51,6 +51,17 @@ class SamplingTest(unittest.TestCase):
         self.assertEqual({MidiGeneration.sample(probs, 1.0, rng, top_p=0.85) for _ in range(500)}, {0, 1, 2})
         self.assertEqual(MidiGeneration.sample(probs, 0, rng), 0)
 
+    def test_grammar_mask(self):
+        import numpy
+        vocab = music_tokens.VOCAB
+        masks = MidiGeneration.grammar_masks(vocab)
+        rng = numpy.random.default_rng(0)
+        uniform = numpy.full(len(vocab), 1 / len(vocab))
+        after_p = {vocab[MidiGeneration.sample(uniform, 1.0, rng, allowed=masks["P"])][0] for _ in range(200)}
+        after_d = {vocab[MidiGeneration.sample(uniform, 1.0, rng, allowed=masks["D"])][0] for _ in range(200)}
+        self.assertEqual(after_p, {"D"})
+        self.assertEqual(after_d, {"S", "P"})
+
 
 class RenderTest(unittest.TestCase):
     def test_tokens_to_mp3_and_mp4(self):

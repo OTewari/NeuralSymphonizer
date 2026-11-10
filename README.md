@@ -15,10 +15,14 @@ recordings are linked; open one and use GitHub's download or raw button to liste
 |---|---|---|
 | 1. Baseline | Tutorial tokens (one per note or chord, no timing), 3 × 512 LSTM | [1](results/stage1-baseline/samples/sample_seed1.mp3) · [2](results/stage1-baseline/samples/sample_seed2.mp3) · [3](results/stage1-baseline/samples/sample_seed3.mp3) |
 | 2. Timing, octaves, transposition | Event tokens with note lengths and exact pitches, all notes read, random transposition into 12 keys; same model | [1](results/stage2-rhythm-transpose/samples/sample_seed1.mp3) · [2](results/stage2-rhythm-transpose/samples/sample_seed2.mp3) · [3](results/stage2-rhythm-transpose/samples/sample_seed3.mp3) |
+| 3. Evaluation and sampling | Objective comparison with real music; grammar-constrained top-k 10 sampling; stage-2 model | [1](results/stage3-sampling-eval/samples/sample_seed1.mp3) · [2](results/stage3-sampling-eval/samples/sample_seed2.mp3) · [3](results/stage3-sampling-eval/samples/sample_seed3.mp3) |
 
-Each stage's section in [`PAPER.md`](PAPER.md) gives the commit its code is at.
+Each stage's section in [`PAPER.md`](PAPER.md) gives the commit its code is at. On
+the stage-3 evaluation, the mean similarity to the held-out real pieces is 0.54 for
+stage 1, about 0.75 for stage 2 and 3, and 0.78 for real training pieces
+(`results/stage3-sampling-eval/evaluation.md`).
 
-## How it works now (stage 2)
+## How it works now (stage 3)
 
 - `music_tokens.py` turns MIDI into event tokens. `P<pitch>` starts a note at its
   exact MIDI pitch, `D<n>` gives its length, and `S<n>` advances time, on a grid of
@@ -29,10 +33,13 @@ Each stage's section in [`PAPER.md`](PAPER.md) gives the commit its code is at.
   → softmax model. It predicts the next token at every position of 256-token windows,
   and each training window is transposed by a random −6 to +5 semitones.
 - `MidiGeneration.py` takes a 128-token prompt from a held-out piece and samples until
-  it has a given number of notes. It writes MIDI at a fixed tempo, with an optional
-  piano roll.
+  it has a given number of notes. Sampling can use top-k, top-p and grammar-constrained
+  decoding. It writes MIDI at a fixed tempo, with an optional piano roll.
 - `render_audio.py` plays MIDI through a piano SoundFont and writes an MP3, plus an
   optional MP4 with a moving playhead.
+- `evaluate.py` compares sets of MIDI files with the real held-out pieces through
+  feature distributions, and `evaluate_bootstrap.py` gives 95% intervals.
+  `context_probe.py` shows how much of its context window a model uses.
 
 ## Setup
 
@@ -69,12 +76,17 @@ The stage-2 weights (`results/stage2-rhythm-transpose/model/model.weights.h5`,
 22 MB) are in the repository, so this works right after cloning:
 
 ```bash
-python MidiGeneration.py --seed 1 --notes 300 --temperature 1.0 --bpm 100 --output results/stage2-rhythm-transpose/samples/sample_seed1.mid --piano-roll
-python render_audio.py results/stage2-rhythm-transpose/samples/sample_seed1.mid --video
+python MidiGeneration.py --seed 1 --notes 300 --temperature 1.0 --top-k 10 --grammar --bpm 100 --output results/stage3-sampling-eval/samples/sample_seed1.mid --piano-roll
+python render_audio.py results/stage3-sampling-eval/samples/sample_seed1.mid --video
 ```
 
+That is the stage-3 setting. Leave out `--top-k 10 --grammar` to get the stage-2
+behaviour.
+
 `MidiGeneration.py` options: `--model-dir`, `--notes`, `--prompt-len`,
-`--temperature`, `--seed`, `--bpm`, `--output` and `--piano-roll`. It prints
+`--temperature`, `--top-k`, `--top-p`, `--grammar`, `--prompt-piece`,
+`--prompt-start`, `--count` (a batch of samples with consecutive seeds), `--seed`,
+`--bpm`, `--output` and `--piano-roll`. It prints
 structural statistics for the sample. On the same machine the same seed gives the same
 file; on other hardware it may not, because tiny numerical differences change which
 token is sampled. `render_audio.py` uses `TimGM6mb.sf2` from `pretty_midi` by default,
@@ -101,8 +113,9 @@ git-ignored), `model.weights.h5` (weights only, used for generation), `vocab.jso
 python -m unittest discover -s tests -v
 ```
 
-Three smoke tests run in about 5 seconds on CPU:
+Five smoke tests run in about 5 seconds on CPU:
 - the token round trip and the transposition table;
+- the top-k, top-p and grammar filters;
 - a 16-unit model trained for one epoch on the two smallest files, then generating
   12 notes;
 - rendering a few notes to MP3 and MP4.
@@ -111,12 +124,13 @@ The GitHub Actions workflow in `.github/workflows/smoke-test.yml` runs them on C
 
 ## Limitations
 
-See [`PAPER.md`](PAPER.md) for the measured limits of each stage. In short, for
-stage 2:
-- The model still overfits the 95-piece corpus.
+See [`PAPER.md`](PAPER.md) for the measured limits of each stage. In short, as of
+stage 3:
+- The model does not repeat earlier material: 0.3–6.6% of 4-onset patterns repeat in
+  generated samples, against 66% in real pieces.
+- It uses only about the last 32 to 63 tokens of context.
+- It still overfits the 95-piece corpus.
 - Tempo, dynamics (velocity) and pedalling are not modelled.
-- Samples written at temperature 1.0 vary a lot in density and contain stray extreme
-  notes.
 - The statistics and audio checks show structure and correct rendering, not musical
   quality.
 

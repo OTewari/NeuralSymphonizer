@@ -1,0 +1,24 @@
+{
+  "tokens": 676,
+  "notes": 300,
+  "onsets": 77,
+  "chord_onsets": 66,
+  "distinct_pitches": 41,
+  "pitch_range": [
+    29,
+    83
+  ],
+  "distinct_note_lengths": 11,
+  "seconds": 29.1,
+  "longest_run_of_identical_onsets": 2,
+  "ill_formed_tokens": 1,
+  "prompt_piece": "chpn_op53_format0.mid",
+  "prompt_start": 3464,
+  "seed": 3,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 100.0,
+  "output": "results/stage3-sampling-eval/samples/sample_seed3.mid"
+}

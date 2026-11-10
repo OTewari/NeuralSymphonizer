@@ -32,14 +32,28 @@ def load_model(model_dir):
     return model, vocab, config
 
 
-def sample(probs, temperature, rng, top_k=0, top_p=1.0):
+def grammar_masks(vocab):
+    """Allowed next tokens after each token type: P must be followed by its D; D and S
+    by an S or a P. Returns {type of previous token: 0/1 mask over the vocabulary}."""
+    kind = numpy.array([t[0] for t in vocab])
+    return {"P": (kind == "D").astype("float64"),
+            "D": (kind != "D").astype("float64"),
+            "S": (kind != "D").astype("float64")}
+
+
+def sample(probs, temperature, rng, top_k=0, top_p=1.0, allowed=None):
     """Draw an index from probs after temperature scaling (temperature 0 = argmax).
 
-    top_k > 0 keeps only the k most likely tokens (Fan et al., 2018); top_p < 1 keeps the
-    smallest set of most likely tokens whose probability adds up to at least top_p
-    (nucleus sampling, Holtzman et al., 2019). Both can be combined.
+    allowed, if given, is a 0/1 mask; disallowed tokens get probability 0 before
+    anything else (grammar-constrained decoding). top_k > 0 keeps only the k most
+    likely tokens (Fan et al., 2018); top_p < 1 keeps the smallest set of most likely
+    tokens whose probability adds up to at least top_p (nucleus sampling, Holtzman et
+    al., 2019). They can be combined.
     """
     probs = numpy.asarray(probs, dtype="float64")
+    if allowed is not None:
+        probs = probs * allowed
+        probs /= probs.sum()
     if temperature <= 0:
         return int(numpy.argmax(probs))
     logits = numpy.log(probs + 1e-12) / temperature
@@ -60,11 +74,13 @@ def sample(probs, temperature, rng, top_k=0, top_p=1.0):
 
 
 def generate_batch(model, vocab, config, prompts, n_notes, seeds, temperature=1.0, top_k=0, top_p=1.0,
-                   max_tokens=None):
+                   max_tokens=None, grammar=False):
     """Sample after each prompt until it has n_notes P tokens; all prompts run as one batch.
 
-    With a single prompt this is the plain one-sample generator. Prompts must have equal length.
+    With a single prompt this is the plain one-sample generator. Prompts must have equal
+    length. grammar=True masks tokens that would break the P-then-D token grammar.
     """
+    masks = grammar_masks(vocab) if grammar else None
     rngs = [numpy.random.default_rng(s) for s in seeds]
     note_to_int = {t: i for i, t in enumerate(vocab)}
     windows = [[note_to_int[t] for t in p] for p in prompts]
@@ -75,7 +91,8 @@ def generate_batch(model, vocab, config, prompts, n_notes, seeds, temperature=1.
         x = numpy.array([windows[i][-config["seq_len"]:] for i in active], dtype="int32")
         probs = keras.ops.convert_to_numpy(model(x, training=False))[:, -1]
         for row, i in enumerate(active):
-            idx = sample(probs[row], temperature, rngs[i], top_k, top_p)
+            allowed = masks[vocab[windows[i][-1]][0]] if masks else None
+            idx = sample(probs[row], temperature, rngs[i], top_k, top_p, allowed)
             outs[i].append(vocab[idx])
             notes[i] += vocab[idx][0] == "P"
             windows[i].append(idx)
@@ -83,9 +100,11 @@ def generate_batch(model, vocab, config, prompts, n_notes, seeds, temperature=1.
     return outs
 
 
-def generate_tokens(model, vocab, config, prompt, n_notes, temperature, seed, max_tokens=None, top_k=0, top_p=1.0):
+def generate_tokens(model, vocab, config, prompt, n_notes, temperature, seed, max_tokens=None, top_k=0, top_p=1.0,
+                    grammar=False):
     """Sample tokens after the prompt until n_notes P tokens have been produced."""
-    return generate_batch(model, vocab, config, [prompt], n_notes, [seed], temperature, top_k, top_p, max_tokens)[0]
+    return generate_batch(model, vocab, config, [prompt], n_notes, [seed], temperature, top_k, top_p, max_tokens,
+                          grammar)[0]
 
 
 def choose_prompt(pieces, config, prompt_len, rng, piece=None, start=None):
@@ -146,6 +165,8 @@ def main(argv=None):
     p.add_argument("--temperature", type=float, default=1.0)
     p.add_argument("--top-k", type=int, default=0, help="sample only from the k most likely tokens (0 = off)")
     p.add_argument("--top-p", type=float, default=1.0, help="nucleus sampling threshold (1.0 = off)")
+    p.add_argument("--grammar", action="store_true",
+                   help="never sample a token that breaks the P-then-D grammar (constrained decoding)")
     p.add_argument("--prompt-piece", default=None, help="file name in --midi-dir to take the prompt from")
     p.add_argument("--prompt-start", type=int, default=None, help="token index where the prompt starts")
     p.add_argument("--seed", type=int, default=0)
@@ -169,7 +190,7 @@ def main(argv=None):
         base, ext = os.path.splitext(args.output)
         outputs.append(args.output if args.count == 1 else f"{base}_seed{s}{ext}")
     token_lists = generate_batch(model, vocab, config, [pr[2] for pr in prompts], args.notes, seeds,
-                                 args.temperature, args.top_k, args.top_p)
+                                 args.temperature, args.top_k, args.top_p, grammar=args.grammar)
 
     all_stats = []
     for s, (piece, start, _), tokens, out in zip(seeds, prompts, token_lists, outputs):
@@ -179,6 +200,7 @@ def main(argv=None):
         stats = describe(tokens, pm)
         stats.update({"prompt_piece": piece, "prompt_start": start, "seed": s,
                       "temperature": args.temperature, "top_k": args.top_k, "top_p": args.top_p,
+                      "grammar": args.grammar,
                       "bpm": args.bpm, "output": out.replace("\\", "/")})
         all_stats.append(stats)
         if args.piano_roll:
@@ -188,6 +210,7 @@ def main(argv=None):
             sampling = f"temperature {args.temperature}"
             sampling += f", top-k {args.top_k}" if args.top_k else ""
             sampling += f", top-p {args.top_p}" if args.top_p < 1.0 else ""
+            sampling += ", grammar" if args.grammar else ""
             render_audio.piano_roll_frame(notes, max(n.end for n in notes), png,
                                           f"{os.path.basename(out)}  (seed {s}, {sampling})")
     print(json.dumps(all_stats[0] if args.count == 1 else all_stats, indent=2))

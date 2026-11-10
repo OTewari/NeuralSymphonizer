@@ -175,9 +175,10 @@ drawn from the held-out pieces as before:
 
 What changed is visible in the piano rolls: notes of many lengths, rests, chords
 spread over several octaves, and a register that moves through the piece. The model
-also learned the token grammar almost perfectly: about 1% of generated tokens are
-ill-formed, for example a pitch without a length, and the decoder repairs them with a
-default length. The audio check found the expected pitch rising at 206 of 231
+also learned the token grammar well: in these three samples about 1% of generated
+tokens are ill-formed, for example a pitch without a length, and the decoder repairs
+them with a default length. (Section 4.3 shows that over 20 samples this hides a rare
+but complete failure.) The audio check found the expected pitch rising at 206 of 231
 single-note onsets (89%). The misses are mostly in the fastest sample (seed 3: 300
 notes in 17 seconds), where onsets overlap within the analysis window. No 250 ms
 window is silent while a note is held.
@@ -187,3 +188,146 @@ window is silent while a note is held.
 1, which is typical of sampling the full distribution at temperature 1.0. There is
 also still no way to say whether stage 2 is better than stage 1 in a number rather
 than a picture. Stage 3 addresses both.
+
+### 4.3 Stage 3: evaluation and sampling
+
+`results/stage3-sampling-eval/` · code at commit `857fd91` and the stage-3 results
+commit · model: the stage-2 weights, unchanged
+
+**The wall.** Stage 2 sounded and looked different from stage 1, but three things
+could not be settled from three samples. Was it closer to real music, and by how
+much? Were the stray extreme notes and the large swings in density systematic? And
+would a sampling rule other than plain temperature 1.0 help? Validation loss cannot
+answer the first question, because stage 1 and stage 2 use different tokens.
+
+**The change.**
+
+- **Evaluation on MIDI** (`evaluate.py`), following the distribution-comparison idea
+  of Yang & Lerch [Yang2020], simplified to pooled histograms. For a set of generated
+  files and the 10 held-out real pieces it compares seven feature distributions:
+  pitch, pitch class, the interval between the top notes of consecutive onsets,
+  polyphony, inter-onset interval, note length, and repetition (whether each
+  4-onset pattern of intervals and timing already occurred earlier in the same file).
+  Each comparison is a histogram overlap from 0 to 1, and their average is the "mean"
+  column. Two further numbers target the stage-2 problems: the share of notes outside
+  the range that holds 98% of the real notes (stray notes), and the spread of
+  notes-per-beat between files (density swings, as standard deviation ÷ mean). Times
+  are in beats, so the tempo a file was written at does not matter. Every stage can
+  be scored the same way, from its MIDI alone.
+- **20 samples per setting** instead of 3. All use seeds 101 to 120, so the same 20
+  prompts from the held-out pieces, and 300 notes each. Stage 1's 20 samples were
+  made with stage-1 code checked out at `fc3f7a8`. `evaluate_bootstrap.py` resamples
+  each set's files to give a 95% interval for the mean.
+- **Sampling options** in `MidiGeneration.py`: top-k [Fan2018] (Huang & Yang also use
+  top-k for music [Huang2020]), nucleus or top-p [Holtzman2019], and lower
+  temperatures. `--count` generates a whole evaluation set in one batch.
+- **Two reference points.** The table includes 10 real *training* pieces as a ceiling:
+  genuine music by the same composers. A caveat applies when reading it: the
+  generated samples continue prompts taken from the held-out pieces, so they inherit
+  those pieces' key and register, and the real training pieces have no such
+  advantage. This flatters the generated pitch and pitch-class scores.
+
+**Result 1: stage 2 is clearly closer to real music than stage 1.**
+
+| set (20 files unless noted) | pitch | pitch class | interval | polyphony | onset gap | note length | repetition | mean (95% interval) | repeated patterns | stray notes | density spread |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| real training pieces (10) | 0.717 | 0.742 | 0.865 | 0.850 | 0.685 | 0.667 | 0.941 | 0.781 | 60.1% | 1.7% | 0.34 |
+| stage 1 | 0.516 | 0.861 | 0.799 | 0.805 | 0.225 | 0.213 | 0.358 | 0.540 (0.532–0.547) | 1.9% | 0.5% | 0.14 |
+| stage 2 (temperature 1.0) | 0.765 | 0.841 | 0.813 | 0.940 | 0.852 | 0.845 | 0.343 | 0.771 (0.721–0.771) | 0.3% | 5.3% | 0.47 |
+| held-out real pieces | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 66.0% | 1.7% | 0.33 |
+
+Stage 2's gain over stage 1 is far outside the bootstrap noise. It comes almost
+entirely from timing: onset-gap overlap rose from 0.23 to 0.85 and note-length
+overlap from 0.21 to 0.85. Register (pitch, 0.52 to 0.77) and polyphony improved too,
+as expected from keeping chord octaves. Stage 1's few stray notes and low density
+spread are not virtues. They come from squeezing every chord into one octave and
+giving every note the same length.
+
+**Result 2: unconstrained sampling sometimes collapses.** Over 20 samples, plain
+temperature 1.0 produced one sample (seed 114) that never reached 300 notes. After 387
+tokens it sampled two length tokens in a row (`D3 D3`), which never happens in
+training. From that state the LSTM emitted `D3` about 2,000 more times, until the
+2,400-token cap. Temperature 0.9 collapsed twice in 20 samples. This is the
+degenerate repetition that [Holtzman2019] describes for text, triggered here by a
+single sample from the unreliable tail. The three stage-2 samples happened to avoid
+it. The fix is **grammar-constrained decoding** (`--grammar`): after a pitch token,
+only a length token may follow; after a length or a time shift, only a shift or a
+pitch. Disallowed tokens get probability zero before sampling. With it, no setting
+collapsed, and ill-formed tokens fell to 0.15%. That remainder is the final pitch
+token of each sample, cut off when generation stops at 300 notes.
+
+**Result 3: truncation trades range for fewer stray notes; overall similarity is
+unchanged.**
+
+| sampling (stage-2 model, 20 files each) | mean (95% interval) | stray notes | density spread | collapsed samples |
+|---|---|---|---|---|
+| temperature 1.0 | 0.771 (0.721–0.771) | 5.3% | 0.47 | 1 |
+| temperature 0.9 | 0.752 | 6.4% | 0.40 | 2 |
+| temperature 0.8 | 0.728 | 6.9% | 0.41 | 0 |
+| top-p 0.95 | 0.735 | 7.0% | 0.47 | 0 |
+| top-p 0.9 | 0.719 (0.648–0.736) | 3.7% | 0.33 | 0 |
+| top-p 0.8 | 0.704 | 6.0% | 0.99 | 0 |
+| top-k 10 | 0.741 (0.699–0.755) | 3.1% | 0.35 | 0 |
+| top-k 5 | 0.730 | 5.8% | 0.32 | 0 |
+| grammar, temperature 1.0 | 0.749 (0.702–0.762) | 5.9% | 0.27 | 0 |
+| grammar, temperature 0.9 | 0.728 | 7.3% | 0.42 | 0 |
+| grammar, top-p 0.95 | 0.735 | 5.1% | 0.48 | 0 |
+| grammar, top-p 0.9 | 0.741 (0.670–0.748) | 3.8% | 0.69 | 0 |
+| **grammar, top-k 10** | **0.756 (0.714–0.766)** | **3.3%** | **0.30** | **0** |
+
+All the sampling settings overlap within their 95% intervals on mean similarity, so
+none is measurably closer to real music overall. What does change:
+- Lower temperatures and top-k 5 narrow the register (pitch overlap 0.56 to 0.67,
+  against 0.77 at temperature 1.0).
+- Top-k 10 and top-p 0.9 cut the stray notes by about 30 to 40%.
+- Top-p 0.8 makes density swing widely.
+- The results for every setting, with all seven features, are in
+  `results/stage3-sampling-eval/evaluation.md`.
+
+Stage 3 adopts **grammar-constrained top-k 10 at temperature 1.0**. It cannot
+collapse, its share of stray notes is among the lowest (3.3%; real music 1.7%), its
+density spread (0.30) matches the real pieces (0.33), and its overall similarity is as
+good as any setting's. Its cost is a narrower register than plain temperature 1.0
+(pitch overlap 0.68 against 0.77).
+
+Samples with the same seeds as stages 1 and 2:
+
+| sample | prompt from | length | onsets | chord onsets | distinct pitches | range (MIDI) | distinct note lengths |
+|---|---|---|---|---|---|---|---|
+| [seed 1](results/stage3-sampling-eval/samples/sample_seed1.mp3) | `chpn_op35_4` | 53.4 s | 268 | 21 | 35 | 38–88 | 9 |
+| [seed 2](results/stage3-sampling-eval/samples/sample_seed2.mp3) | `mz_311_1` | 63.3 s | 204 | 93 | 41 | 28–78 | 10 |
+| [seed 3](results/stage3-sampling-eval/samples/sample_seed3.mp3) | `chpn_op53` | 29.1 s | 77 | 66 | 41 | 29–83 | 11 |
+
+![Stage 3 piano roll, seed 1](results/stage3-sampling-eval/samples/sample_seed1.png)
+
+Compared with stage 2, the extreme notes are gone: the ranges are 38–88, 28–78 and
+29–83, against 25–106, 25–79 and 24–106. The audio check found the expected pitch at
+353 of 368 single-note onsets (96%), and nothing is silent while a note is held.
+
+**What is still wrong.** Two numbers stand out, and no sampling setting moves either
+of them:
+
+1. **Real music repeats itself; the model does not.** In the held-out pieces, 66% of
+   4-onset patterns repeat an earlier pattern in the same piece, and in the training
+   pieces 60%. In generated music the share is 0.3% to 6.6% under every setting.
+2. **The model uses only a short context.** `context_probe.py` measures the held-out
+   loss at each position of a window, that is, after 1, 2, 4, ... tokens of context
+   (`results/stage2-rhythm-transpose/model/context_probe_1024.json`):
+
+| tokens of context | 1 | 2–3 | 4–7 | 8–15 | 16–31 | 32–63 | 64–127 | 128–255 | 256–511 | 512–1023 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| stage-2 loss, 1,024-token windows | 3.95 | 2.58 | 2.24 | 2.04 | 1.83 | 1.74 | 1.78 | 1.80 | 1.70 | 1.78 |
+
+The loss stops improving after about 32 to 63 tokens, roughly 7 to 14 onsets, and
+stays flat out to 1,024. A probe of the stage-1 model gave the same pattern with its
+own tokens: 98% of the loss reduction came within the first 10 of its 50 tokens
+(Section 5).
+
+The model has learned local continuation, meaning which note, chord and length is
+plausible next, but nothing that would let it return to earlier material.
+Overfitting is the other open problem from stage 2: a 95-piece corpus is small for 5.5
+million parameters. Stage 4 tests how far more data goes before the architecture
+question in Section 5.
+
+*Listening.* The recordings of every stage are provided for listening. The
+measurements above describe structure, not musical quality.
