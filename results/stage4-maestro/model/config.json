@@ -1,0 +1,31 @@
+{
+  "stage": 4,
+  "dataset": "maestro",
+  "seq_len": 256,
+  "units": 512,
+  "layers": 3,
+  "embedding_dim": 64,
+  "dropout": 0.2,
+  "seed": 42,
+  "vocab_size": 120,
+  "transpose": [
+    -6,
+    5
+  ],
+  "batch_size": 32,
+  "train_tokens": 16739429,
+  "train_pieces": "MAESTRO v3.0.0 train split (962 files)",
+  "val_pieces": [
+    "mz_311_1_format0.mid",
+    "chpn_op35_2_format0.mid",
+    "chpn_op35_4_format0.mid",
+    "chpn_op53_format0.mid",
+    "chpn-p22_format0.mid",
+    "chpn-p15_format0.mid",
+    "appass_2_format0.mid",
+    "mond_1_format0.mid",
+    "beethoven_opus22_3_format0.mid",
+    "chpn_op35_3_format0.mid"
+  ],
+  "checkpoint_validation": "MAESTRO v3.0.0 validation split (137 files)"
+}

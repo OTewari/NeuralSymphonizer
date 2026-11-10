@@ -1,0 +1,24 @@
+{
+  "tokens": 1039,
+  "notes": 300,
+  "onsets": 272,
+  "chord_onsets": 27,
+  "distinct_pitches": 34,
+  "pitch_range": [
+    30,
+    82
+  ],
+  "distinct_note_lengths": 15,
+  "seconds": 63.5,
+  "longest_run_of_identical_onsets": 2,
+  "ill_formed_tokens": 2,
+  "prompt_piece": "2011/MIDI-Unprocessed_02_R2_2011_MID--AUDIO_R2-D1_03_Track03_wav.midi",
+  "prompt_start": 1348,
+  "seed": 3,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 120.0,
+  "output": "results/stage4-maestro/samples-maestro/sample_seed3.mid"
+}

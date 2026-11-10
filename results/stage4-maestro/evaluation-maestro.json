@@ -1,0 +1,64 @@
+{
+  "reference": {
+    "files": 20,
+    "notes": 95456,
+    "notes_per_onset": 1.42,
+    "repeat_share": 0.043,
+    "outlier_share": 0.0175,
+    "density_spread": 0.424,
+    "pitch_range_98pct": [
+      31.0,
+      95.0
+    ]
+  },
+  "sets": {
+    "real MAESTRO training performances (20)": {
+      "pitch": 0.891,
+      "pitch_class": 0.908,
+      "interval": 0.893,
+      "polyphony": 0.941,
+      "ioi": 0.919,
+      "note_length": 0.923,
+      "repetition": 0.996,
+      "mean": 0.924,
+      "repeat_share": 0.047,
+      "outlier_share": 0.0193,
+      "density_spread": 0.451,
+      "files": 20,
+      "notes": 84612,
+      "notes_per_onset": 1.31
+    },
+    "stage-2 model, MAESTRO prompts": {
+      "pitch": 0.715,
+      "pitch_class": 0.958,
+      "interval": 0.621,
+      "polyphony": 0.704,
+      "ioi": 0.604,
+      "note_length": 0.667,
+      "repetition": 0.973,
+      "mean": 0.749,
+      "repeat_share": 0.016,
+      "outlier_share": 0.0125,
+      "density_spread": 0.626,
+      "files": 20,
+      "notes": 6000,
+      "notes_per_onset": 2.35
+    },
+    "stage 4 (MAESTRO model), MAESTRO prompts": {
+      "pitch": 0.724,
+      "pitch_class": 0.773,
+      "interval": 0.844,
+      "polyphony": 0.995,
+      "ioi": 0.892,
+      "note_length": 0.848,
+      "repetition": 0.96,
+      "mean": 0.862,
+      "repeat_share": 0.003,
+      "outlier_share": 0.0358,
+      "density_spread": 0.337,
+      "files": 20,
+      "notes": 6000,
+      "notes_per_onset": 1.42
+    }
+  }
+}

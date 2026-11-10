@@ -1,0 +1,48 @@
+{
+  "reference": {
+    "files": 10,
+    "notes": 25076,
+    "notes_per_onset": 2.19,
+    "repeat_share": 0.66,
+    "outlier_share": 0.0171,
+    "density_spread": 0.329,
+    "pitch_range_98pct": [
+      32.0,
+      88.0
+    ]
+  },
+  "sets": {
+    "stage 3 (stage-2 model)": {
+      "pitch": 0.675,
+      "pitch_class": 0.89,
+      "interval": 0.784,
+      "polyphony": 0.896,
+      "ioi": 0.865,
+      "note_length": 0.83,
+      "repetition": 0.349,
+      "mean": 0.756,
+      "repeat_share": 0.009,
+      "outlier_share": 0.0332,
+      "density_spread": 0.297,
+      "files": 20,
+      "notes": 6000,
+      "notes_per_onset": 2.37
+    },
+    "stage 4 (MAESTRO model)": {
+      "pitch": 0.826,
+      "pitch_class": 0.875,
+      "interval": 0.784,
+      "polyphony": 0.657,
+      "ioi": 0.538,
+      "note_length": 0.609,
+      "repetition": 0.346,
+      "mean": 0.662,
+      "repeat_share": 0.006,
+      "outlier_share": 0.026,
+      "density_spread": 0.517,
+      "files": 20,
+      "notes": 6000,
+      "notes_per_onset": 1.32
+    }
+  }
+}

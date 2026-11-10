@@ -16,6 +16,7 @@ recordings are linked; open one and use GitHub's download or raw button to liste
 | 1. Baseline | Tutorial tokens (one per note or chord, no timing), 3 × 512 LSTM | [1](results/stage1-baseline/samples/sample_seed1.mp3) · [2](results/stage1-baseline/samples/sample_seed2.mp3) · [3](results/stage1-baseline/samples/sample_seed3.mp3) |
 | 2. Timing, octaves, transposition | Event tokens with note lengths and exact pitches, all notes read, random transposition into 12 keys; same model | [1](results/stage2-rhythm-transpose/samples/sample_seed1.mp3) · [2](results/stage2-rhythm-transpose/samples/sample_seed2.mp3) · [3](results/stage2-rhythm-transpose/samples/sample_seed3.mp3) |
 | 3. Evaluation and sampling | Objective comparison with real music; grammar-constrained top-k 10 sampling; stage-2 model | [1](results/stage3-sampling-eval/samples/sample_seed1.mp3) · [2](results/stage3-sampling-eval/samples/sample_seed2.mp3) · [3](results/stage3-sampling-eval/samples/sample_seed3.mp3) |
+| 4. More data | The same model trained on MAESTRO's 962 recorded performances (27.6 times the tokens); stage-3 sampling | [1](results/stage4-maestro/samples/sample_seed1.mp3) · [2](results/stage4-maestro/samples/sample_seed2.mp3) · [3](results/stage4-maestro/samples/sample_seed3.mp3); MAESTRO-prompted: [1](results/stage4-maestro/samples-maestro/sample_seed1.mp3) · [2](results/stage4-maestro/samples-maestro/sample_seed2.mp3) · [3](results/stage4-maestro/samples-maestro/sample_seed3.mp3) |
 
 Each stage's section in [`PAPER.md`](PAPER.md) gives the commit its code is at. On
 the stage-3 evaluation, the mean similarity to the held-out real pieces is 0.54 for
@@ -152,6 +153,11 @@ stage 3:
   Beethoven and Mozart.
 - Whether the generated samples count as adaptations of the training files is not
   settled here; they are shared on the same CC BY-SA terms to be safe.
+- **Stage-4 training data:** MAESTRO v3.0.0 (Hawthorne et al., "Enabling Factorized
+  Piano Music Modeling and Generation with the MAESTRO Dataset", ICLR 2019),
+  [magenta.tensorflow.org/datasets/maestro](https://magenta.tensorflow.org/datasets/maestro),
+  made available by Google LLC under CC BY-NC-SA 4.0. It is not included here;
+  `get_maestro.py` downloads it.
 - **Audio rendering:** [TinySoundFont](https://pypi.org/project/tinysoundfont/)
   (Python bindings by Nathan Whitehead, MIT), with `TimGM6mb.sf2` (by Tim Brechbill,
   with additions by David Bolton; GPL-2 according to Debian's packaging) as bundled in
@@ -168,3 +174,6 @@ stage 3:
   `midi_files/`. Those files keep the Creative Commons Attribution-ShareAlike terms
   described under [Credits](#credits). The trained weights and the generated files
   in `results/` are derived from them and are shared on the same terms to be safe.
+- **Exception, stage 4:** `results/stage4-maestro/` (its model and samples) is
+  derived from MAESTRO, not from `midi_files/`. It is shared under MAESTRO's
+  CC BY-NC-SA 4.0 terms, so non-commercial use only.

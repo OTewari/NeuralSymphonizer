@@ -331,3 +331,112 @@ question in Section 5.
 
 *Listening.* The recordings of every stage are provided for listening. The
 measurements above describe structure, not musical quality.
+
+### 4.4 Stage 4: more data (MAESTRO)
+
+`results/stage4-maestro/` · same model, tokens, transposition and stage-3 sampling
+
+**The wall.** Stages 2 and 3 left two problems that more data might address. The
+LSTM overfit a 95-piece corpus: its best epoch was 61, after which validation loss
+rose while training loss kept falling. And it used only a short context and never
+repeated earlier material. With more data, the model might at least learn longer
+regularities.
+
+**The change.** Train the same model on MAESTRO v3.0.0 [Hawthorne2019]. It contains
+1,276 recorded performances from the International Piano-e-Competition, about 199
+hours, under CC BY-NC-SA 4.0. `get_maestro.py` downloads the 58 MB MIDI archive and
+checks its published SHA-256; the files are not part of this repository. The
+official split was used: 962 training performances, 16,739,429 tokens, which is 27.6
+times stage 2's training set. The 137 validation performances choose the checkpoint.
+MAESTRO alone was used, without the piano-midi.de files, because the two licences'
+share-alike terms cannot both be met by one model. The piano-midi.de held-out pieces
+were scored every epoch as a second validation set, so the result compares with
+stages 2 and 3. Everything else was unchanged.
+
+One difference matters for everything below. MAESTRO files are recorded
+performances at a nominal 120 bpm, so their "beats" are half-seconds of real time,
+with expressive timing, rolled chords and pedalled durations. piano-midi.de files are
+step-sequenced to a score.
+
+**Result.** 54,754 optimizer steps, about 27 passes over the training set, in 80.6
+minutes. (The log shows 80 "epochs" of up to 1,000 steps; because of how Keras walks
+a dataset of 2,029 batches, every third one is a 29-step remainder.)
+
+| | MAESTRO validation loss (accuracy) | piano-midi.de held-out loss (accuracy) | training loss |
+|---|---|---|---|
+| stage 2 (piano-midi.de, best epoch) | — | 1.779 (51.8%) | 1.310 |
+| stage 4, final step (also its best) | 2.037 (37.1%) | 1.838 (49.6%); best 1.803 | 1.920 |
+
+![Stage 4 loss](results/stage4-maestro/model/loss_curve.png)
+
+- **Overfitting is gone.** Training and validation loss stay within about 0.12 of each
+  other, against a gap of 0.47 at stage 2's best epoch. Validation loss was still
+  falling when the run ended, so the model is under-trained, not over-fitted.
+- **It does not transfer to the piano-midi.de pieces.** On the held-out sequenced
+  pieces it scores slightly worse than stage 2: 1.838 against 1.779. The evaluation
+  explains why. Its samples play fewer simultaneous notes (1.32 notes per onset,
+  against 2.19 in the real pieces) and use performance timing:
+
+| prompts from the piano-midi.de held-out pieces (20 files each) | pitch | polyphony | onset gap | note length | mean |
+|---|---|---|---|---|---|
+| stage 3 (stage-2 model) | 0.675 | 0.896 | 0.865 | 0.830 | 0.756 |
+| stage 4 (MAESTRO model) | 0.826 | 0.657 | 0.538 | 0.609 | 0.662 |
+
+- **In its own domain it is clearly better.** Prompted from MAESTRO validation
+  performances and compared with 20 real MAESTRO validation performances:
+
+| MAESTRO prompts, compared with real MAESTRO performances (20 files each) | interval | polyphony | onset gap | note length | mean |
+|---|---|---|---|---|---|
+| real MAESTRO training performances | 0.893 | 0.941 | 0.919 | 0.923 | 0.924 |
+| stage-2 model (never saw MAESTRO) | 0.621 | 0.704 | 0.604 | 0.667 | 0.749 |
+| stage-4 model | 0.844 | 0.995 | 0.892 | 0.848 | 0.862 |
+
+  The full tables are in `results/stage4-maestro/evaluation-pm.md` and
+  `evaluation-maestro.md`. The repetition measure means little here: real MAESTRO
+  performances repeat only 4.3% of 4-onset patterns exactly, because expressive
+  timing rarely repeats to the 20 ms grid.
+
+- **The context limit did not move.** The probe on 589 windows of 1,024 tokens from
+  MAESTRO validation performances:
+
+| tokens of context | 1 | 2–3 | 4–7 | 8–15 | 16–31 | 32–63 | 64–127 | 128–255 | 256–511 | 512–1023 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| stage-4 loss, MAESTRO validation | 3.02 | 2.78 | 2.59 | 2.33 | 2.13 | 2.02 | 2.00 | 2.00 | 2.01 | 2.00 |
+
+  The curve has the same shape as stage 2's on its own data: it falls for about 32 to
+  63 tokens and is flat after. More data and an in-domain test do not lengthen the
+  context the LSTM uses.
+
+Samples, using the stage-3 sampling with the same seeds as before. They are prompted
+from the piano-midi.de held-out pieces and written at 100 bpm, like the earlier
+stages, and also prompted from MAESTRO validation performances and written at
+120 bpm, the speed they were performed at:
+
+| sample | prompt from | length | onsets | chord onsets | range (MIDI) | distinct note lengths |
+|---|---|---|---|---|---|---|
+| [seed 1](results/stage4-maestro/samples/sample_seed1.mp3) | `chpn_op35_4` | 102.0 s | 274 | 22 | 22–74 | 16 |
+| [seed 2](results/stage4-maestro/samples/sample_seed2.mp3) | `mz_311_1` | 105.7 s | 256 | 32 | 33–87 | 12 |
+| [seed 3](results/stage4-maestro/samples/sample_seed3.mp3) | `chpn_op53` | 18.0 s | 216 | 71 | 43–101 | 10 |
+| [MAESTRO seed 1](results/stage4-maestro/samples-maestro/sample_seed1.mp3) | a MAESTRO validation performance | 20.1 s | 257 | 40 | 49–107 | 10 |
+| [MAESTRO seed 2](results/stage4-maestro/samples-maestro/sample_seed2.mp3) | a MAESTRO validation performance | 29.1 s | 286 | 14 | 34–82 | 11 |
+| [MAESTRO seed 3](results/stage4-maestro/samples-maestro/sample_seed3.mp3) | a MAESTRO validation performance | 63.5 s | 272 | 27 | 30–82 | 15 |
+
+The prompt files are named in each sample's `.json`.
+
+![Stage 4 piano roll, MAESTRO seed 3](results/stage4-maestro/samples-maestro/sample_seed3.png)
+
+The output now looks like a performance rather than a score. In these files, 41–71%
+of onsets are followed by another within 100 ms, as in rolled chords and ornaments,
+against none in stage 3, and 22–30% of notes are shorter than 60 ms. This also
+explains the lower audio-check score: the expected pitch rose at 1,019 of 1,349
+single-note onsets (76%). The check's 80 ms window often holds a neighbouring onset
+as well. In 2 windows of 250 ms the audio was silent although the MIDI holds a note;
+those are very short notes.
+
+**What is still wrong.** More data removed the overfitting and taught the model a
+second, expressive style. It changed neither the short effective context nor the
+missing repetition, and the training was still improving when the 80-minute budget
+ran out. Stage 4 ended with the loss still falling under RMSprop and no
+normalisation. That raises the question of whether the training itself, not only the
+data or the architecture, is holding the LSTM back. Stage 5 tests that in the fast
+piano-midi.de setup, where one run takes minutes.

@@ -1,0 +1,24 @@
+{
+  "tokens": 979,
+  "notes": 300,
+  "onsets": 274,
+  "chord_onsets": 22,
+  "distinct_pitches": 43,
+  "pitch_range": [
+    22,
+    74
+  ],
+  "distinct_note_lengths": 16,
+  "seconds": 102.0,
+  "longest_run_of_identical_onsets": 30,
+  "ill_formed_tokens": 1,
+  "prompt_piece": "chpn_op35_4_format0.mid",
+  "prompt_start": 2914,
+  "seed": 1,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 100.0,
+  "output": "results/stage4-maestro/samples/sample_seed1.mid"
+}

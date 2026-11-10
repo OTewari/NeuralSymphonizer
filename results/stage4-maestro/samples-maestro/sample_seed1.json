@@ -1,0 +1,24 @@
+{
+  "tokens": 908,
+  "notes": 300,
+  "onsets": 257,
+  "chord_onsets": 40,
+  "distinct_pitches": 39,
+  "pitch_range": [
+    49,
+    107
+  ],
+  "distinct_note_lengths": 10,
+  "seconds": 20.1,
+  "longest_run_of_identical_onsets": 3,
+  "ill_formed_tokens": 2,
+  "prompt_piece": "2008/MIDI-Unprocessed_07_R1_2008_01-04_ORIG_MID--AUDIO_07_R1_2008_wav--3.midi",
+  "prompt_start": 7527,
+  "seed": 1,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 120.0,
+  "output": "results/stage4-maestro/samples-maestro/sample_seed1.mid"
+}

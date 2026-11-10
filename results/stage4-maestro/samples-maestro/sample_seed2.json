@@ -1,0 +1,24 @@
+{
+  "tokens": 1026,
+  "notes": 300,
+  "onsets": 286,
+  "chord_onsets": 14,
+  "distinct_pitches": 23,
+  "pitch_range": [
+    34,
+    82
+  ],
+  "distinct_note_lengths": 11,
+  "seconds": 29.1,
+  "longest_run_of_identical_onsets": 4,
+  "ill_formed_tokens": 1,
+  "prompt_piece": "2004/MIDI-Unprocessed_XP_19_R1_2004_01-02_ORIG_MID--AUDIO_19_R1_2004_01_Track01_wav.midi",
+  "prompt_start": 945,
+  "seed": 2,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 120.0,
+  "output": "results/stage4-maestro/samples-maestro/sample_seed2.mid"
+}

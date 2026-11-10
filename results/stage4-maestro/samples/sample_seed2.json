@@ -1,0 +1,24 @@
+{
+  "tokens": 1018,
+  "notes": 300,
+  "onsets": 256,
+  "chord_onsets": 32,
+  "distinct_pitches": 42,
+  "pitch_range": [
+    33,
+    87
+  ],
+  "distinct_note_lengths": 12,
+  "seconds": 105.7,
+  "longest_run_of_identical_onsets": 15,
+  "ill_formed_tokens": 1,
+  "prompt_piece": "mz_311_1_format0.mid",
+  "prompt_start": 791,
+  "seed": 2,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 100.0,
+  "output": "results/stage4-maestro/samples/sample_seed2.mid"
+}
