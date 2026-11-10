@@ -11,6 +11,11 @@ built on the approach from Sigurður Skúli's 2017 tutorial (see [Credits](#cred
 - `MidiGeneration.py` loads the trained model, gives it 50 tokens from a held-out
   piece as a starting prompt, samples new tokens one at a time and writes them to a
   MIDI file, with an optional piano-roll image.
+- `render_audio.py` plays a MIDI file through a piano SoundFont and writes an MP3,
+  and optionally a WAV and an MP4 with a moving playhead.
+
+**Listen:** [seed 1](samples/sample_seed1.mp3) · [seed 2](samples/sample_seed2.mp3) ·
+[seed 3](samples/sample_seed3.mp3) (MP3, 52 seconds each; see [Samples](#samples)).
 
 ## How it works
 
@@ -82,6 +87,23 @@ hardware it may not: run on the CPU, seed 2 produced a different sample from the
 committed GPU one, because tiny numerical differences change which token is
 sampled and everything after it follows from that.
 
+## Render to audio
+
+```bash
+python render_audio.py samples/sample_seed1.mid samples/sample_seed2.mid samples/sample_seed3.mid --video
+```
+
+This writes `sample_seedN.mp3` next to each MIDI file and, with `--video`, an MP4
+of the piano roll with a playhead (`.mp4` and `.wav` files are git-ignored). The
+notes are synthesized offline with [TinySoundFont](https://pypi.org/project/tinysoundfont/)
+and encoded with the ffmpeg binary that [imageio-ffmpeg](https://pypi.org/project/imageio-ffmpeg/)
+installs, so no separate install is needed. By default it uses `TimGM6mb.sf2`, the
+small General MIDI SoundFont that ships inside the `pretty_midi` package, with
+preset 0 (Acoustic Grand Piano). It sounds basic. For a better piano, pass any
+`.sf2` file with `--soundfont path/to/piano.sf2`. Other options: `--preset`,
+`--bank`, `--wav`, `--bitrate`, `--tail`. Rendering the three samples took about
+6 seconds.
+
 ## Train
 
 The run whose results are shown below:
@@ -102,9 +124,13 @@ Other options: `--seq-len`, `--embedding-dim`, `--dropout`, `--val-split`,
 python -m unittest discover -s tests -v
 ```
 
-A smoke test trains a 16-unit, one-layer model for a few steps on the two smallest
-MIDI files and generates 12 tokens. It took about 5 seconds on CPU here. The GitHub
-Actions workflow in `.github/workflows/smoke-test.yml` runs it on CPU.
+One smoke test trains a 16-unit, one-layer model for a few steps on the two
+smallest MIDI files and generates 12 tokens. A second renders five tokens to MP3
+and MP4. Together they took about 5 seconds on CPU here. The GitHub Actions
+workflow in `.github/workflows/smoke-test.yml` runs them on CPU. On Linux,
+`pip install -r requirements.txt` needs the PortAudio headers first
+(`sudo apt-get install portaudio19-dev`), because `tinysoundfont` depends on
+`pyaudio`, which has no Linux wheel. The rendering code never uses `pyaudio`.
 
 ## Results
 
@@ -152,10 +178,19 @@ single-pitch-class tokens (octave doublings), and 185 of the 200 generated token
 in that sample are chord tokens too. The dense band between MIDI pitch 60 and 71
 in every roll is the chord tokens, which are all placed in that octave.
 
-What it does not show: whether the samples sound musical. They have not been
-listened to as part of this work, and with a 12.7% next-token accuracy and no
-rhythm model they should be expected to sound like a stream of plausible-looking
-notes rather than a composition.
+What it does not show: whether the samples sound musical. With a 12.7% next-token
+accuracy and no rhythm model, they should be expected to sound like a stream of
+plausible-looking notes rather than a composition.
+
+**Audio.** The MP3s ([seed 1](samples/sample_seed1.mp3), [seed 2](samples/sample_seed2.mp3),
+[seed 3](samples/sample_seed3.mp3)) were made with the command in
+[Render to audio](#render-to-audio) and checked without listening. Each decodes
+to 52.0 seconds (50 s of notes and a 2 s release). No 250 ms stretch of the 50 s is
+silent. The peak is 0.86 of full scale, so nothing clips. At all 339 onsets
+where a single note starts on its own (140, 103 and 96 per file), the strongest
+frequency 30–180 ms later is the note's fundamental or one of its first four
+harmonics. So the audio contains the notes in the MIDI files, at the right
+times.
 
 ## Limitations
 
@@ -164,8 +199,11 @@ notes rather than a composition.
 - Chords lose their octave and are all placed around middle C.
 - Only the first instrument part of each file is read.
 - The model overfits this small corpus quickly; see the loss curve.
-- Nobody has listened to the samples as part of this work. The statistics show
-  variety, not musical quality.
+- The statistics and audio checks show variety and correct rendering, not musical
+  quality.
+- The default SoundFont is a 6 MB General MIDI set, so the piano sounds basic.
+- GitHub does not play audio files inside a README, so the MP3s are linked, not
+  embedded.
 - Validation uses only 10 pieces, so the validation loss is a rough number.
 
 ## Credits
@@ -188,6 +226,13 @@ notes rather than a composition.
   Beethoven and Mozart.
 - Whether the generated samples count as adaptations of the training files is not
   settled here; they are shared on the same CC BY-SA terms to be safe.
+- **Audio rendering:** the MP3s were synthesized with
+  [TinySoundFont](https://pypi.org/project/tinysoundfont/) (Python bindings by
+  Nathan Whitehead, MIT) using `TimGM6mb.sf2` (by Tim Brechbill, with additions by
+  David Bolton; GPL-2 according to Debian's packaging), as bundled in
+  [pretty_midi](https://github.com/craffel/pretty-midi), and encoded with the ffmpeg
+  build from [imageio-ffmpeg](https://pypi.org/project/imageio-ffmpeg/). The
+  SoundFont itself is not included in this repository.
 
 ## Licence
 

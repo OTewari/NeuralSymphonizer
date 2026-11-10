@@ -12,6 +12,10 @@ models/*.keras
 models/best.weights.h5
 models/train_started.txt
 checkpoints/
+
+# Rendered video/WAV (MP3s in samples/ are committed)
+samples/*.mp4
+*.wav
 *.tmp
 
 # Editors / OS

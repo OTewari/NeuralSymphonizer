@@ -17,6 +17,22 @@ os.environ.setdefault("KERAS_BACKEND", "torch")
 
 import MidiGeneration  # noqa: E402
 import MidiModelTraining  # noqa: E402
+import render_audio  # noqa: E402
+
+
+class RenderTest(unittest.TestCase):
+    def test_tokens_to_mp3_and_mp4(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            midi = os.path.join(tmp, "tiny.mid")
+            MidiGeneration.tokens_to_midi(["C4", "E4", "G4", "0.4.7", "C5"], midi)
+            render_audio.main([midi, "--video", "--tail", "0.5"])
+            for ext in (".mp3", ".mp4"):
+                self.assertGreater(os.path.getsize(os.path.join(tmp, "tiny" + ext)), 1000, ext)
+            audio = render_audio.render(render_audio.read_notes(midi), render_audio.default_soundfont(), tail=0.5)
+            self.assertAlmostEqual(len(audio) / 44100, 5 * 0.25 + 0.5, places=2)  # 120 bpm eighth notes
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class SmokeTest(unittest.TestCase):

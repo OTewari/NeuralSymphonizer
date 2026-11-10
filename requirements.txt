@@ -7,3 +7,9 @@ torch~=2.11
 music21~=10.5
 numpy>=2.0
 matplotlib>=3.8
+# Audio rendering (render_audio.py), tested with pretty_midi 0.2.11.post0,
+# tinysoundfont 0.3.7, imageio-ffmpeg 0.8.1. On Linux, tinysoundfont's pyaudio
+# dependency builds from source and needs PortAudio headers (portaudio19-dev).
+pretty_midi>=0.2.11
+tinysoundfont~=0.3.7
+imageio-ffmpeg>=0.6
