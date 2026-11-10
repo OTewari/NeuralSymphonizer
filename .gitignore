@@ -1,1 +1,19 @@
-venv
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Training by-products (the kept model files in models/ are listed in README.md)
+models/*.keras
+models/train_started.txt
+checkpoints/
+*.tmp
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
