@@ -41,8 +41,8 @@ in every stage.
 
 - **Model:** an embedding, then three stacked LSTM layers of 512 units, each followed
   by dropout 0.2, then a 256-unit dense layer and a softmax over the vocabulary. The
-  optimizer is RMSprop with cross-entropy loss. It has about 5.5 to 5.8 million
-  parameters, depending on the vocabulary.
+  optimizer is RMSprop with cross-entropy loss; stage 5 adds LayerNorm and switches
+  to Adam. It has about 5.5 to 5.8 million parameters, depending on the vocabulary.
 - **Software:** Keras 3.15.1 on the PyTorch 2.11 backend (CUDA 12.8), on one NVIDIA
   RTX 5070 under Windows 11.
 - **Checkpointing:** the weights with the lowest validation loss are kept.
@@ -440,3 +440,103 @@ ran out. Stage 4 ended with the loss still falling under RMSprop and no
 normalisation. That raises the question of whether the training itself, not only the
 data or the architecture, is holding the LSTM back. Stage 5 tests that in the fast
 piano-midi.de setup, where one run takes minutes.
+
+### 4.5 Stage 5: how the LSTM is trained
+
+`results/stage5-lstm-training/` · piano-midi.de data and stage-2 tokens, 3 × 512 LSTM
+
+**The wall.** Two observations pointed at the training itself rather than the data
+or the architecture. Stage 2 overfit after about 60 epochs, yet its training loss was
+still high. Stage 4, with 27 times more data, was still improving after 80 minutes
+under RMSprop. The language-modelling literature has a standard list of LSTM
+training fixes, and one paper there finds that careful regularisation and tuning of a
+plain LSTM beat newer architectures [Melis2017]. Stage 5 tests that list on this
+problem, one change at a time, in the piano-midi.de setup, where a run takes 5 to 13
+minutes and the held-out loss compares directly with stage 2.
+
+**The changes tested.** Each is an option in `MidiModelTraining.py`, all off by
+default:
+
+- **Variational dropout** [Gal2016], with dropout kept off the recurrent connections
+  [Zaremba2014]. The same dropout mask is used at every time step between layers,
+  instead of a new one per step. Dropout on the recurrent weights themselves, as in
+  AWD-LSTM [Merity2017], was not used: it would disable the fast cuDNN kernel.
+- **LayerNorm** after each LSTM layer [Ba2016].
+- **Adam** [Kingma2014] at learning rate 0.001, with gradient-norm clipping at 1.0
+  [Pascanu2013], instead of RMSprop.
+- **Stronger standard dropout**, 0.3 instead of 0.2.
+
+Weight tying [Press2017; Inan2017] was not tried. With 120 tokens, the output layer
+has only about 31,000 of the 5.5 million weights, so tying could save little.
+Time-stretch augmentation [Oore2018] was not tried either: on a grid of 1/24 beat, a
+5–10% stretch rounds back to the same token for most note lengths.
+
+**Result.** Same seed (42), split, model size, tokens and transposition as stage 2:
+
+| run | change from stage 2 | best epoch | training loss | held-out loss | accuracy |
+|---|---|---|---|---|---|
+| stage 2 | (RMSprop, dropout 0.2) | 61 | 1.310 | 1.779 | 51.8% |
+| a | variational dropout | 63 | 1.403 | 1.840 | 49.1% |
+| d | Adam + gradient clipping | 21 | 1.299 | 1.796 | 50.7% |
+| e | LayerNorm (still RMSprop) | 51 | 1.032 | 1.525 | 59.1% |
+| **b** | **LayerNorm + Adam + clipping** | **25** | **1.046** | **1.490** | **59.5%** |
+| c | b + variational dropout | 28 | 1.266 | 1.650 | 54.0% |
+| f | b + dropout 0.3 | 32 | 1.059 | 1.557 | 58.0% |
+
+![Stage 5 ablation](results/stage5-lstm-training/ablation_val_loss.png)
+
+- **LayerNorm is the change that matters.** It lowers held-out loss from 1.779 to
+  1.525 on its own, and to 1.490 with Adam and clipping. That is the largest drop of
+  any stage on the same tokens, and it raises next-token accuracy from 51.8% to
+  59.5%. Adam with clipping alone does nothing (1.796); it only helps on top of
+  LayerNorm. This study does not establish why LayerNorm helps so much here. Ba et
+  al. report that it stabilises the hidden-state dynamics of recurrent networks
+  [Ba2016].
+- **More dropout hurts.** Variational dropout makes every configuration worse (a,
+  c), and so does a higher standard rate (f). The model is not short of
+  regularisation in the usual sense.
+- **Run b reaches its best in 25 epochs and 8.4 minutes**, against stage 2's 61
+  epochs and 5.8 minutes. It still overfits afterwards.
+- **The gain survives a second seed.** With seed 7, which also changes the 10
+  held-out pieces, the same comparison gives 1.701 for the stage-2 setup and 1.479
+  for run b (`seed7-*` folders).
+
+Run b becomes the stage-5 model. Evaluated with the stage-3 sampling (grammar and
+top-k 10, 20 files, the same prompts):
+
+| set | pitch | pitch class | polyphony | onset gap | note length | repetition | mean (95% interval) | repeated patterns |
+|---|---|---|---|---|---|---|---|---|
+| stage 3 (stage-2 model) | 0.675 | 0.890 | 0.896 | 0.865 | 0.830 | 0.349 | 0.756 (0.707–0.763) | 0.9% |
+| stage 5 | 0.813 | 0.910 | 0.852 | 0.763 | 0.764 | 0.397 | 0.758 (0.695–0.766) | 5.7% |
+| stage 5, temperature 1.0 with grammar | 0.815 | 0.898 | 0.876 | 0.749 | 0.765 | 0.365 | 0.756 (0.708–0.770) | 2.5% |
+| held-out real pieces | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 66.0% |
+
+The lower loss does not show up as a higher mean similarity: 0.758 against 0.756,
+within noise. It changes the profile:
+- **Register:** closer to the real music (pitch overlap 0.81 against 0.68).
+- **Rhythm:** further from it (onset gap 0.76 against 0.87).
+- **Repetition:** this is the first model that repeats itself noticeably. 5.7% of its
+  4-onset patterns recur, six times stage 3's 0.9%. That is still a tenth of real
+  music's 66%.
+
+The full table is in `results/stage5-lstm-training/evaluation.md`.
+
+The context probe still flattens early: loss 1.50 at 32–63 tokens of context, then
+between 1.40 and 1.54 out to 1,024 tokens (`b-layernorm-adam-clip/context_probe_1024.json`).
+
+| sample | prompt from | length | onsets | chord onsets | distinct pitches | range (MIDI) | distinct note lengths |
+|---|---|---|---|---|---|---|---|
+| [seed 1](results/stage5-lstm-training/samples/sample_seed1.mp3) | `chpn_op35_4` | 46.8 s | 238 | 44 | 39 | 25–82 | 12 |
+| [seed 2](results/stage5-lstm-training/samples/sample_seed2.mp3) | `mz_311_1` | 24.6 s | 186 | 68 | 40 | 49–93 | 10 |
+| [seed 3](results/stage5-lstm-training/samples/sample_seed3.mp3) | `chpn_op53` | 22.6 s | 142 | 64 | 39 | 25–75 | 3 |
+
+![Stage 5 piano roll, seed 1](results/stage5-lstm-training/samples/sample_seed1.png)
+
+The audio check found the expected pitch at 339 of 389 single-note onsets (87%), and
+nothing is silent while a note is held.
+
+**What is still wrong.** Better training gave the best next-token model of the
+study, and the first measurable repetition. But it did not lengthen the context the
+model uses, and the samples still repeat themselves about a tenth as often as real
+music does. Section 5 puts the five stages side by side and asks whether the
+remaining gap is the LSTM itself.

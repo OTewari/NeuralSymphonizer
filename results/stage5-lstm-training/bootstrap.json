@@ -1,0 +1,37 @@
+{
+  "stage 3 (grammar, top-k 10)": {
+    "mean_overlap": 0.756,
+    "ci95": [
+      0.707,
+      0.763
+    ]
+  },
+  "stage 4": {
+    "mean_overlap": 0.662,
+    "ci95": [
+      0.63,
+      0.674
+    ]
+  },
+  "stage 5 (grammar, top-k 10)": {
+    "mean_overlap": 0.758,
+    "ci95": [
+      0.695,
+      0.766
+    ]
+  },
+  "stage 5 (grammar, T 1.0)": {
+    "mean_overlap": 0.756,
+    "ci95": [
+      0.708,
+      0.77
+    ]
+  },
+  "stage-2 model (grammar, T 1.0)": {
+    "mean_overlap": 0.749,
+    "ci95": [
+      0.702,
+      0.762
+    ]
+  }
+}

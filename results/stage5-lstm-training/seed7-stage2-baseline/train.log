@@ -1,0 +1,206 @@
+vocab 120 | train 597030 tokens, 2288 windows from 85 pieces | val 274 windows from 10 pieces | transpose (-6, 5)
+Model: "sequential"
++--------------------------------------------------------------------------+
+| Layer (type)                    | Output Shape           |       Param # |
+|---------------------------------+------------------------+---------------|
+| embedding (Embedding)           | (None, None, 64)       |         7,680 |
+|---------------------------------+------------------------+---------------|
+| lstm (LSTM)                     | (None, None, 512)      |     1,181,696 |
+|---------------------------------+------------------------+---------------|
+| dropout (Dropout)               | (None, None, 512)      |             0 |
+|---------------------------------+------------------------+---------------|
+| lstm_1 (LSTM)                   | (None, None, 512)      |     2,099,200 |
+|---------------------------------+------------------------+---------------|
+| dropout_1 (Dropout)             | (None, None, 512)      |             0 |
+|---------------------------------+------------------------+---------------|
+| lstm_2 (LSTM)                   | (None, None, 512)      |     2,099,200 |
+|---------------------------------+------------------------+---------------|
+| dropout_2 (Dropout)             | (None, None, 512)      |             0 |
+|---------------------------------+------------------------+---------------|
+| dense (Dense)                   | (None, None, 256)      |       131,328 |
+|---------------------------------+------------------------+---------------|
+| dropout_3 (Dropout)             | (None, None, 256)      |             0 |
+|---------------------------------+------------------------+---------------|
+| dense_1 (Dense)                 | (None, None, 120)      |        30,840 |
++--------------------------------------------------------------------------+
+ Total params: 5,549,944 (21.17 MB)
+ Trainable params: 5,549,944 (21.17 MB)
+ Non-trainable params: 0 (0.00 B)
+Epoch 1/500
+.venv\Lib\site-packages\keras\src\backend\torch\rnn.py:656: UserWarning: RNN module weights are not part of single contiguous chunk of memory. This means they need to be compacted at every call, possibly greatly increasing memory usage. To compact weights again call flatten_parameters(). (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\aten\src\ATen\native\cudnn\RNN.cpp:1479.)
+  outputs, h_n, c_n = torch._VF.lstm(
+72/72 - 7s - 95ms/step - accuracy: 0.1487 - loss: 3.8991 - val_accuracy: 0.2042 - val_loss: 3.5443
+Epoch 2/500
+72/72 - 7s - 92ms/step - accuracy: 0.1914 - loss: 3.6148 - val_accuracy: 0.2186 - val_loss: 3.4623
+Epoch 3/500
+72/72 - 7s - 91ms/step - accuracy: 0.2088 - loss: 3.5268 - val_accuracy: 0.2256 - val_loss: 3.3904
+Epoch 4/500
+72/72 - 5s - 76ms/step - accuracy: 0.2211 - loss: 3.4578 - val_accuracy: 0.2457 - val_loss: 3.2892
+Epoch 5/500
+72/72 - 3s - 48ms/step - accuracy: 0.2441 - loss: 3.3392 - val_accuracy: 0.2999 - val_loss: 3.1177
+Epoch 6/500
+72/72 - 3s - 46ms/step - accuracy: 0.3725 - loss: 2.8203 - val_accuracy: 0.4388 - val_loss: 2.5549
+Epoch 7/500
+72/72 - 6s - 77ms/step - accuracy: 0.4159 - loss: 2.5769 - val_accuracy: 0.4422 - val_loss: 2.4342
+Epoch 8/500
+72/72 - 6s - 90ms/step - accuracy: 0.4351 - loss: 2.4467 - val_accuracy: 0.4609 - val_loss: 2.3015
+Epoch 9/500
+72/72 - 6s - 90ms/step - accuracy: 0.4446 - loss: 2.3562 - val_accuracy: 0.4674 - val_loss: 2.2210
+Epoch 10/500
+72/72 - 6s - 89ms/step - accuracy: 0.4522 - loss: 2.2719 - val_accuracy: 0.4698 - val_loss: 2.2543
+Epoch 11/500
+72/72 - 5s - 63ms/step - accuracy: 0.4615 - loss: 2.2036 - val_accuracy: 0.4789 - val_loss: 2.1055
+Epoch 12/500
+72/72 - 5s - 70ms/step - accuracy: 0.4705 - loss: 2.1436 - val_accuracy: 0.4873 - val_loss: 2.0453
+Epoch 13/500
+72/72 - 7s - 91ms/step - accuracy: 0.4786 - loss: 2.0926 - val_accuracy: 0.4932 - val_loss: 2.0254
+Epoch 14/500
+72/72 - 6s - 89ms/step - accuracy: 0.4841 - loss: 2.0492 - val_accuracy: 0.4940 - val_loss: 1.9968
+Epoch 15/500
+72/72 - 6s - 89ms/step - accuracy: 0.4896 - loss: 2.0106 - val_accuracy: 0.4931 - val_loss: 2.0027
+Epoch 16/500
+72/72 - 4s - 56ms/step - accuracy: 0.4954 - loss: 1.9727 - val_accuracy: 0.4977 - val_loss: 1.9768
+Epoch 17/500
+72/72 - 3s - 47ms/step - accuracy: 0.5010 - loss: 1.9394 - val_accuracy: 0.5015 - val_loss: 1.9297
+Epoch 18/500
+72/72 - 4s - 51ms/step - accuracy: 0.5052 - loss: 1.9073 - val_accuracy: 0.5004 - val_loss: 1.9841
+Epoch 19/500
+72/72 - 6s - 88ms/step - accuracy: 0.5096 - loss: 1.8780 - val_accuracy: 0.5142 - val_loss: 1.8527
+Epoch 20/500
+72/72 - 6s - 90ms/step - accuracy: 0.5119 - loss: 1.8565 - val_accuracy: 0.5190 - val_loss: 1.8404
+Epoch 21/500
+72/72 - 6s - 88ms/step - accuracy: 0.5161 - loss: 1.8275 - val_accuracy: 0.5108 - val_loss: 1.8614
+Epoch 22/500
+72/72 - 7s - 90ms/step - accuracy: 0.5193 - loss: 1.8043 - val_accuracy: 0.5171 - val_loss: 1.8243
+Epoch 23/500
+72/72 - 4s - 53ms/step - accuracy: 0.5228 - loss: 1.7803 - val_accuracy: 0.5179 - val_loss: 1.8056
+Epoch 24/500
+72/72 - 6s - 79ms/step - accuracy: 0.5247 - loss: 1.7656 - val_accuracy: 0.5252 - val_loss: 1.7927
+Epoch 25/500
+72/72 - 6s - 90ms/step - accuracy: 0.5262 - loss: 1.7574 - val_accuracy: 0.5227 - val_loss: 1.8006
+Epoch 26/500
+72/72 - 6s - 90ms/step - accuracy: 0.5311 - loss: 1.7266 - val_accuracy: 0.5170 - val_loss: 1.8122
+Epoch 27/500
+72/72 - 6s - 90ms/step - accuracy: 0.5334 - loss: 1.7066 - val_accuracy: 0.5233 - val_loss: 1.7823
+Epoch 28/500
+72/72 - 5s - 67ms/step - accuracy: 0.5360 - loss: 1.6928 - val_accuracy: 0.5199 - val_loss: 1.7950
+Epoch 29/500
+72/72 - 3s - 46ms/step - accuracy: 0.5379 - loss: 1.6759 - val_accuracy: 0.5347 - val_loss: 1.7288
+Epoch 30/500
+72/72 - 3s - 46ms/step - accuracy: 0.5390 - loss: 1.6657 - val_accuracy: 0.5275 - val_loss: 1.7443
+Epoch 31/500
+72/72 - 6s - 81ms/step - accuracy: 0.5428 - loss: 1.6455 - val_accuracy: 0.5349 - val_loss: 1.7395
+Epoch 32/500
+72/72 - 6s - 88ms/step - accuracy: 0.5446 - loss: 1.6312 - val_accuracy: 0.5282 - val_loss: 1.7519
+Epoch 33/500
+72/72 - 6s - 89ms/step - accuracy: 0.5457 - loss: 1.6218 - val_accuracy: 0.5302 - val_loss: 1.7303
+Epoch 34/500
+72/72 - 6s - 84ms/step - accuracy: 0.5481 - loss: 1.6069 - val_accuracy: 0.5405 - val_loss: 1.7132
+Epoch 35/500
+72/72 - 3s - 49ms/step - accuracy: 0.5500 - loss: 1.5954 - val_accuracy: 0.5314 - val_loss: 1.7328
+Epoch 36/500
+72/72 - 6s - 90ms/step - accuracy: 0.5526 - loss: 1.5813 - val_accuracy: 0.5382 - val_loss: 1.7102
+Epoch 37/500
+72/72 - 6s - 90ms/step - accuracy: 0.5537 - loss: 1.5712 - val_accuracy: 0.5398 - val_loss: 1.7051
+Epoch 38/500
+72/72 - 7s - 91ms/step - accuracy: 0.5550 - loss: 1.5638 - val_accuracy: 0.5368 - val_loss: 1.7058
+Epoch 39/500
+72/72 - 7s - 90ms/step - accuracy: 0.5568 - loss: 1.5514 - val_accuracy: 0.5372 - val_loss: 1.7114
+Epoch 40/500
+72/72 - 4s - 56ms/step - accuracy: 0.5591 - loss: 1.5408 - val_accuracy: 0.5328 - val_loss: 1.7108
+Epoch 41/500
+72/72 - 4s - 52ms/step - accuracy: 0.5603 - loss: 1.5299 - val_accuracy: 0.5295 - val_loss: 1.7271
+Epoch 42/500
+72/72 - 4s - 51ms/step - accuracy: 0.5620 - loss: 1.5210 - val_accuracy: 0.5300 - val_loss: 1.7171
+Epoch 43/500
+72/72 - 4s - 50ms/step - accuracy: 0.5632 - loss: 1.5099 - val_accuracy: 0.5379 - val_loss: 1.7200
+Epoch 44/500
+72/72 - 3s - 47ms/step - accuracy: 0.5651 - loss: 1.5007 - val_accuracy: 0.5384 - val_loss: 1.7098
+Epoch 45/500
+72/72 - 3s - 46ms/step - accuracy: 0.5657 - loss: 1.4911 - val_accuracy: 0.5367 - val_loss: 1.7406
+Epoch 46/500
+72/72 - 3s - 48ms/step - accuracy: 0.5681 - loss: 1.4850 - val_accuracy: 0.5386 - val_loss: 1.7007
+Epoch 47/500
+72/72 - 3s - 45ms/step - accuracy: 0.5688 - loss: 1.4725 - val_accuracy: 0.5390 - val_loss: 1.7054
+Epoch 48/500
+72/72 - 3s - 47ms/step - accuracy: 0.5699 - loss: 1.4659 - val_accuracy: 0.5406 - val_loss: 1.7219
+Epoch 49/500
+72/72 - 3s - 47ms/step - accuracy: 0.5714 - loss: 1.4586 - val_accuracy: 0.5398 - val_loss: 1.7145
+Epoch 50/500
+72/72 - 3s - 47ms/step - accuracy: 0.5734 - loss: 1.4512 - val_accuracy: 0.5344 - val_loss: 1.7140
+Epoch 51/500
+72/72 - 3s - 46ms/step - accuracy: 0.5747 - loss: 1.4390 - val_accuracy: 0.5421 - val_loss: 1.7060
+Epoch 52/500
+72/72 - 3s - 46ms/step - accuracy: 0.5751 - loss: 1.4373 - val_accuracy: 0.5359 - val_loss: 1.7074
+Epoch 53/500
+72/72 - 3s - 46ms/step - accuracy: 0.5765 - loss: 1.4267 - val_accuracy: 0.5397 - val_loss: 1.7278
+Epoch 54/500
+72/72 - 3s - 46ms/step - accuracy: 0.5775 - loss: 1.4212 - val_accuracy: 0.5365 - val_loss: 1.7252
+Epoch 55/500
+72/72 - 3s - 46ms/step - accuracy: 0.5792 - loss: 1.4091 - val_accuracy: 0.5375 - val_loss: 1.7343
+Epoch 56/500
+72/72 - 3s - 47ms/step - accuracy: 0.5811 - loss: 1.4022 - val_accuracy: 0.5428 - val_loss: 1.7083
+Epoch 57/500
+72/72 - 3s - 47ms/step - accuracy: 0.5813 - loss: 1.3983 - val_accuracy: 0.5363 - val_loss: 1.7391
+Epoch 58/500
+72/72 - 5s - 65ms/step - accuracy: 0.5832 - loss: 1.3890 - val_accuracy: 0.5423 - val_loss: 1.7257
+Epoch 59/500
+72/72 - 3s - 46ms/step - accuracy: 0.5834 - loss: 1.3822 - val_accuracy: 0.5339 - val_loss: 1.7403
+Epoch 60/500
+72/72 - 3s - 47ms/step - accuracy: 0.5845 - loss: 1.3800 - val_accuracy: 0.5349 - val_loss: 1.7372
+Epoch 61/500
+72/72 - 3s - 47ms/step - accuracy: 0.5858 - loss: 1.3698 - val_accuracy: 0.5395 - val_loss: 1.7274
+Epoch 62/500
+72/72 - 3s - 46ms/step - accuracy: 0.5883 - loss: 1.3617 - val_accuracy: 0.5367 - val_loss: 1.7466
+Epoch 63/500
+72/72 - 3s - 46ms/step - accuracy: 0.5877 - loss: 1.3591 - val_accuracy: 0.5363 - val_loss: 1.7507
+Epoch 64/500
+72/72 - 3s - 46ms/step - accuracy: 0.5894 - loss: 1.3525 - val_accuracy: 0.5364 - val_loss: 1.7382
+Epoch 65/500
+72/72 - 3s - 47ms/step - accuracy: 0.5899 - loss: 1.3442 - val_accuracy: 0.5425 - val_loss: 1.7362
+Epoch 66/500
+72/72 - 3s - 48ms/step - accuracy: 0.5913 - loss: 1.3382 - val_accuracy: 0.5352 - val_loss: 1.7389
+Epoch 67/500
+72/72 - 3s - 47ms/step - accuracy: 0.5918 - loss: 1.3322 - val_accuracy: 0.5395 - val_loss: 1.7340
+Epoch 68/500
+72/72 - 3s - 45ms/step - accuracy: 0.5929 - loss: 1.3264 - val_accuracy: 0.5395 - val_loss: 1.7737
+Epoch 69/500
+72/72 - 3s - 46ms/step - accuracy: 0.5946 - loss: 1.3172 - val_accuracy: 0.5343 - val_loss: 1.7615
+Epoch 70/500
+72/72 - 3s - 46ms/step - accuracy: 0.5950 - loss: 1.3149 - val_accuracy: 0.5400 - val_loss: 1.7575
+Epoch 71/500
+72/72 - 3s - 47ms/step - accuracy: 0.5966 - loss: 1.3107 - val_accuracy: 0.5342 - val_loss: 1.7816
+Epoch 72/500
+72/72 - 3s - 46ms/step - accuracy: 0.5975 - loss: 1.3031 - val_accuracy: 0.5319 - val_loss: 1.7853
+Epoch 73/500
+72/72 - 3s - 47ms/step - accuracy: 0.5979 - loss: 1.2997 - val_accuracy: 0.5350 - val_loss: 1.7803
+Epoch 74/500
+72/72 - 3s - 46ms/step - accuracy: 0.5983 - loss: 1.2946 - val_accuracy: 0.5337 - val_loss: 1.7899
+Epoch 75/500
+72/72 - 3s - 47ms/step - accuracy: 0.5989 - loss: 1.2922 - val_accuracy: 0.5337 - val_loss: 1.7885
+Epoch 76/500
+72/72 - 3s - 46ms/step - accuracy: 0.5997 - loss: 1.2841 - val_accuracy: 0.5378 - val_loss: 1.7681
+Epoch 77/500
+72/72 - 3s - 45ms/step - accuracy: 0.6012 - loss: 1.2772 - val_accuracy: 0.5394 - val_loss: 1.7783
+Epoch 78/500
+72/72 - 3s - 46ms/step - accuracy: 0.6015 - loss: 1.2775 - val_accuracy: 0.5355 - val_loss: 1.7877
+Epoch 79/500
+72/72 - 3s - 47ms/step - accuracy: 0.6035 - loss: 1.2675 - val_accuracy: 0.5375 - val_loss: 1.7893
+Epoch 80/500
+72/72 - 3s - 46ms/step - accuracy: 0.6039 - loss: 1.2640 - val_accuracy: 0.5374 - val_loss: 1.7929
+Epoch 81/500
+72/72 - 3s - 46ms/step - accuracy: 0.6048 - loss: 1.2597 - val_accuracy: 0.5390 - val_loss: 1.7996
+Epoch 82/500
+72/72 - 3s - 46ms/step - accuracy: 0.6043 - loss: 1.2620 - val_accuracy: 0.5407 - val_loss: 1.7809
+Epoch 83/500
+72/72 - 3s - 46ms/step - accuracy: 0.6055 - loss: 1.2567 - val_accuracy: 0.5327 - val_loss: 1.7864
+Epoch 84/500
+72/72 - 3s - 47ms/step - accuracy: 0.6056 - loss: 1.2538 - val_accuracy: 0.5326 - val_loss: 1.7991
+Epoch 85/500
+72/72 - 3s - 47ms/step - accuracy: 0.6074 - loss: 1.2434 - val_accuracy: 0.5384 - val_loss: 1.8197
+Epoch 86/500
+72/72 - 3s - 47ms/step - accuracy: 0.6074 - loss: 1.2409 - val_accuracy: 0.5357 - val_loss: 1.8041
+Training done in 6.3 min; best weights -> results/stage5-lstm-training/seed7-stage2-baseline\best.weights.h5
+.venv\Lib\site-packages\keras\src\saving\saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'rm_sprop_1', because it has 2 variables whereas the saved optimizer has 16 variables. 
+  saveable.load_own_variables(store)
+Inference weights -> results/stage5-lstm-training/seed7-stage2-baseline\model.weights.h5 (22.2 MB)

@@ -1,0 +1,24 @@
+{
+  "tokens": 837,
+  "notes": 300,
+  "onsets": 238,
+  "chord_onsets": 44,
+  "distinct_pitches": 39,
+  "pitch_range": [
+    25,
+    82
+  ],
+  "distinct_note_lengths": 12,
+  "seconds": 46.8,
+  "longest_run_of_identical_onsets": 4,
+  "ill_formed_tokens": 1,
+  "prompt_piece": "chpn_op35_4_format0.mid",
+  "prompt_start": 2914,
+  "seed": 1,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 100.0,
+  "output": "results/stage5-lstm-training/samples/sample_seed1.mid"
+}

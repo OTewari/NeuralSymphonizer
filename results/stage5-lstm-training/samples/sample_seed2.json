@@ -1,0 +1,24 @@
+{
+  "tokens": 784,
+  "notes": 300,
+  "onsets": 186,
+  "chord_onsets": 68,
+  "distinct_pitches": 40,
+  "pitch_range": [
+    49,
+    93
+  ],
+  "distinct_note_lengths": 10,
+  "seconds": 24.6,
+  "longest_run_of_identical_onsets": 3,
+  "ill_formed_tokens": 1,
+  "prompt_piece": "mz_311_1_format0.mid",
+  "prompt_start": 791,
+  "seed": 2,
+  "temperature": 1.0,
+  "top_k": 10,
+  "top_p": 1.0,
+  "grammar": true,
+  "bpm": 100.0,
+  "output": "results/stage5-lstm-training/samples/sample_seed2.mid"
+}

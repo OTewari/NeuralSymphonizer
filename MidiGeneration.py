@@ -21,7 +21,7 @@ import numpy  # noqa: E402
 import music_tokens  # noqa: E402
 from MidiModelTraining import build_from_config, load_pieces  # noqa: E402
 
-DEFAULT_MODEL_DIR = os.path.join("results", "stage2-rhythm-transpose", "model")
+DEFAULT_MODEL_DIR = os.path.join("results", "stage5-lstm-training", "b-layernorm-adam-clip")
 
 
 def load_model(model_dir):
