@@ -41,6 +41,6 @@ SOFTWARE.
 The files in `midi_files/` are by Bernd Krueger, <http://www.piano-midi.de>,
 and are distributed under a Creative Commons Attribution-ShareAlike licence
 (Germany). They are not covered by the MIT licence. The token cache in `data/`,
-the trained weights in `models/` and the generated files in `samples/` are
+the trained weights and the generated files in `results/` are
 derived from them and are shared on the same terms to be safe. See the Credits
 section of [`README.md`](README.md) for the details.

@@ -6,15 +6,14 @@ __pycache__/
 .venv/
 venv/
 
-# Training by-products (the kept model files in models/ are listed in README.md)
-models/*.keras
+# Training by-products (the kept model files are listed in README.md)
+*.keras
 # training checkpoint incl. optimizer state (~46 MB); model.weights.h5 is the export
-models/best.weights.h5
-models/train_started.txt
+best.weights.h5
 checkpoints/
 
-# Rendered video/WAV (MP3s in samples/ are committed)
-samples/*.mp4
+# Rendered video/WAV (MP3s are committed)
+*.mp4
 *.wav
 *.tmp
 

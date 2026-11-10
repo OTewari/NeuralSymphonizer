@@ -14,8 +14,8 @@ built on the approach from Sigurður Skúli's 2017 tutorial (see [Credits](#cred
 - `render_audio.py` plays a MIDI file through a piano SoundFont and writes an MP3,
   and optionally a WAV and an MP4 with a moving playhead.
 
-**Listen:** [seed 1](samples/sample_seed1.mp3) · [seed 2](samples/sample_seed2.mp3) ·
-[seed 3](samples/sample_seed3.mp3) (MP3, 52 seconds each; see [Samples](#samples)).
+**Listen:** [seed 1](results/stage1-baseline/samples/sample_seed1.mp3) · [seed 2](results/stage1-baseline/samples/sample_seed2.mp3) ·
+[seed 3](results/stage1-baseline/samples/sample_seed3.mp3) (MP3, 52 seconds each; see [Samples](#samples)).
 
 ## How it works
 
@@ -27,7 +27,7 @@ Tokens are cached in `data/notes.json`, which is rebuilt automatically if the se
 MIDI files changes (parsing all 95 files took about 2 minutes here).
 
 **Split.** 10% of the pieces (10 of 95, chosen with a fixed seed and listed in
-`models/config.json`) are held out for validation. Every window of 50 consecutive
+`results/stage1-baseline/model/config.json`) are held out for validation. Every window of 50 consecutive
 tokens inside a piece is one example; the target is the 51st token. That gives
 93,501 training and 9,610 validation windows.
 
@@ -72,11 +72,11 @@ TensorFlow is not needed.
 
 ## Generate
 
-The trained weights are in `models/` (`model.weights.h5`, 23 MB), so generation
+The trained weights are in `results/stage1-baseline/model/` (`model.weights.h5`, 23 MB), so generation
 works right after cloning:
 
 ```bash
-python MidiGeneration.py --seed 1 --length 200 --temperature 1.0 --output samples/sample_seed1.mid --piano-roll
+python MidiGeneration.py --seed 1 --length 200 --temperature 1.0 --model-dir results/stage1-baseline/model --output results/stage1-baseline/samples/sample_seed1.mid --piano-roll
 ```
 
 Options: `--length` (tokens to generate), `--seed`, `--temperature`, `--step`
@@ -90,7 +90,7 @@ sampled and everything after it follows from that.
 ## Render to audio
 
 ```bash
-python render_audio.py samples/sample_seed1.mid samples/sample_seed2.mid samples/sample_seed3.mid --video
+python render_audio.py results/stage1-baseline/samples/sample_seed1.mid results/stage1-baseline/samples/sample_seed2.mid results/stage1-baseline/samples/sample_seed3.mid --video
 ```
 
 This writes `sample_seedN.mp3` next to each MIDI file and, with `--video`, an MP4
@@ -116,7 +116,10 @@ Other options: `--seq-len`, `--embedding-dim`, `--dropout`, `--val-split`,
 `--patience` (early stopping), `--max-files`, `--out-dir`. Training writes
 `models/best.weights.h5` (checkpoint including optimizer state, git-ignored),
 `models/model.weights.h5` (weights only, used by generation), `vocab.json`,
-`config.json`, `history.csv` and `loss_curve.png`.
+`config.json`, `history.csv` and `loss_curve.png`. The files from the run below were
+then moved to `results/stage1-baseline/model/`, and its samples to
+`results/stage1-baseline/samples/`, so that later stages can keep their own results
+next to them.
 
 ## Test
 
@@ -137,10 +140,10 @@ workflow in `.github/workflows/smoke-test.yml` runs them on CPU. On Linux,
 ### Training run
 
 3 LSTM layers × 512 units, 100 epochs, batch size 64, seed 42, on an RTX 5070:
-43.8 minutes. The console output is in [`models/train.log`](models/train.log) and
-every epoch is in [`models/history.csv`](models/history.csv).
+43.8 minutes. The console output is in [`results/stage1-baseline/model/train.log`](results/stage1-baseline/model/train.log) and
+every epoch is in [`results/stage1-baseline/model/history.csv`](results/stage1-baseline/model/history.csv).
 
-![Training and validation loss](models/loss_curve.png)
+![Training and validation loss](results/stage1-baseline/model/loss_curve.png)
 
 | | epoch | training loss | validation loss | validation accuracy |
 |---|---|---|---|---|
@@ -159,17 +162,17 @@ only about one time in eight.
 Three samples of 200 tokens each, temperature 1.0, seeds 1 to 3, made with the
 command in [Generate](#generate). Each started from 50 tokens of a different
 held-out piece. The statistics come from the script and from reading the written
-MIDI file back with `music21`; the full output is in `samples/*.json`.
+MIDI file back with `music21`; the full output is in `results/stage1-baseline/samples/*.json`.
 
 | sample | prompt taken from | distinct tokens | chord tokens | most common token (share) | longest run of one token | distinct pitches | pitch range | longest stretch copied from a training piece |
 |---|---|---|---|---|---|---|---|---|
-| [seed 1](samples/sample_seed1.mid) | `chpn_op35_4` | 68 | 185 | `0` (9%) | 3 | 21 | E2 to E6 | 5 tokens |
-| [seed 2](samples/sample_seed2.mid) | `mz_311_1` | 94 | 119 | `8.11` (4%) | 2 | 38 | E2 to A6 | 3 tokens |
-| [seed 3](samples/sample_seed3.mid) | `chpn_op53` | 78 | 144 | `4.8` (5%) | 2 | 31 | B2 to E♭6 | 3 tokens |
+| [seed 1](results/stage1-baseline/samples/sample_seed1.mid) | `chpn_op35_4` | 68 | 185 | `0` (9%) | 3 | 21 | E2 to E6 | 5 tokens |
+| [seed 2](results/stage1-baseline/samples/sample_seed2.mid) | `mz_311_1` | 94 | 119 | `8.11` (4%) | 2 | 38 | E2 to A6 | 3 tokens |
+| [seed 3](results/stage1-baseline/samples/sample_seed3.mid) | `chpn_op53` | 78 | 144 | `4.8` (5%) | 2 | 31 | B2 to E♭6 | 3 tokens |
 
-![Piano roll, seed 1](samples/sample_seed1.png)
-![Piano roll, seed 2](samples/sample_seed2.png)
-![Piano roll, seed 3](samples/sample_seed3.png)
+![Piano roll, seed 1](results/stage1-baseline/samples/sample_seed1.png)
+![Piano roll, seed 2](results/stage1-baseline/samples/sample_seed2.png)
+![Piano roll, seed 3](results/stage1-baseline/samples/sample_seed3.png)
 
 What this shows: the output is not stuck on one note, uses a wide range of the
 vocabulary, and does not copy long passages from the training data. The prompt
@@ -182,8 +185,8 @@ What it does not show: whether the samples sound musical. With a 12.7% next-toke
 accuracy and no rhythm model, they should be expected to sound like a stream of
 plausible-looking notes rather than a composition.
 
-**Audio.** The MP3s ([seed 1](samples/sample_seed1.mp3), [seed 2](samples/sample_seed2.mp3),
-[seed 3](samples/sample_seed3.mp3)) were made with the command in
+**Audio.** The MP3s ([seed 1](results/stage1-baseline/samples/sample_seed1.mp3), [seed 2](results/stage1-baseline/samples/sample_seed2.mp3),
+[seed 3](results/stage1-baseline/samples/sample_seed3.mp3)) were made with the command in
 [Render to audio](#render-to-audio) and checked without listening. Each decodes
 to 52.0 seconds (50 s of notes and a 2 s release). No 250 ms stretch of the 50 s is
 silent. The peak is 0.86 of full scale, so nothing clips. At all 339 onsets
@@ -242,5 +245,5 @@ times.
 - **MIDI files and what is derived from them:** the MIT licence does not cover
   `midi_files/`. Those files keep the Creative Commons Attribution-ShareAlike
   terms described under [Credits](#credits). The token cache in `data/`, the
-  trained weights in `models/` and the generated files in `samples/` are derived
+  trained weights and the generated files in `results/` are derived
   from them and are shared on the same terms to be safe.
