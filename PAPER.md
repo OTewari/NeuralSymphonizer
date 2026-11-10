@@ -2,9 +2,10 @@
 
 Ojasvi Tewari · NeuralSymphonizer · November 2026
 
-*This write-up was written one stage at a time. Each stage is one or two commits on the
-`complete-generation` branch, and the trained model, samples and recordings of every
-stage are kept under `results/` so the progression can be heard, not just read.*
+*This write-up was written one stage at a time. Each stage is one or two commits in
+this repository's history (listed in Section 8), and the trained model, samples and
+recordings of every stage are kept under `results/` so the progression can be heard,
+not just read. To listen first, see [Recordings](#recordings) below.*
 
 ## Abstract
 
@@ -30,6 +31,37 @@ median of about four bars back. The samples repeat at most 5.7% of their 4-onset
 patterns, against 66% in real music. An attention-based model is therefore the
 justified next step. The last sections discuss Transformers, factorised
 chord-then-length classifiers and other alternatives.
+
+## Recordings
+
+Every stage has three MP3 recordings (seeds 1, 2 and 3), made from that stage's MIDI
+samples with `render_audio.py`. In every stage the same seed continues the same
+held-out piece:
+- seed 1 continues Chopin's Sonata Op. 35, finale (`chpn_op35_4`);
+- seed 2 continues Mozart's Sonata K. 311, first movement (`mz_311_1`);
+- seed 3 continues Chopin's Polonaise Op. 53 (`chpn_op53`).
+
+From stage 2 on, it is the identical excerpt of that piece; stage 1, with different
+tokens, starts at a different point. The one exception is the MAESTRO-prompted row of
+stage 4, which continues recorded performances instead. The same seed across stages
+is therefore a direct comparison. GitHub does not play audio
+inside a page; each link opens the file's page, from which it can be downloaded. Next to each MP3 are the MIDI file (`.mid`), a piano roll
+(`.png`) and its statistics (`.json`).
+
+| stage | seed 1 | seed 2 | seed 3 | what to listen for (from the measurements in Section 4) |
+|---|---|---|---|---|
+| 1. baseline | [MP3](results/stage1-baseline/samples/sample_seed1.mp3) | [MP3](results/stage1-baseline/samples/sample_seed2.mp3) | [MP3](results/stage1-baseline/samples/sample_seed3.mp3) | every note lasts an eighth note; chords sit in one octave around middle C |
+| 2. timing, octaves, transposition | [MP3](results/stage2-rhythm-transpose/samples/sample_seed1.mp3) | [MP3](results/stage2-rhythm-transpose/samples/sample_seed2.mp3) | [MP3](results/stage2-rhythm-transpose/samples/sample_seed3.mp3) | real note lengths and rests, chords spread over octaves, occasional stray very high or low notes |
+| 3. sampling (stage-2 model) | [MP3](results/stage3-sampling-eval/samples/sample_seed1.mp3) | [MP3](results/stage3-sampling-eval/samples/sample_seed2.mp3) | [MP3](results/stage3-sampling-eval/samples/sample_seed3.mp3) | the stray notes are gone; the register is narrower |
+| 4. MAESTRO model, score prompts (100 bpm) | [MP3](results/stage4-maestro/samples/sample_seed1.mp3) | [MP3](results/stage4-maestro/samples/sample_seed2.mp3) | [MP3](results/stage4-maestro/samples/sample_seed3.mp3) | performance-style timing applied to a score: rolled chords, very short notes |
+| 4. MAESTRO model, performance prompts (120 bpm) | [MP3](results/stage4-maestro/samples-maestro/sample_seed1.mp3) | [MP3](results/stage4-maestro/samples-maestro/sample_seed2.mp3) | [MP3](results/stage4-maestro/samples-maestro/sample_seed3.mp3) | the model in its own domain, at the speed the prompts were performed |
+| 5. LayerNorm + Adam | [MP3](results/stage5-lstm-training/samples/sample_seed1.mp3) | [MP3](results/stage5-lstm-training/samples/sample_seed2.mp3) | [MP3](results/stage5-lstm-training/samples/sample_seed3.mp3) | register closest to the real pieces; the first audible repeated figures (5.7% of patterns) |
+
+The piano sound is a small General MIDI SoundFont (TimGM6mb) and is the same for
+every stage, so differences between stages come from the notes, not the rendering.
+Dynamics and pedalling are not modelled. Every note within a recording is played at
+one fixed velocity (90, music21's default, in stage 1; 80 from stage 2 on), with no
+sustain pedal. Each recording is normalised to the same peak level.
 
 ## 1. Introduction
 
@@ -71,6 +103,12 @@ in every stage.
 - **Software:** Keras 3.15.1 on the PyTorch 2.11 backend (CUDA 12.8), on one NVIDIA
   RTX 5070 under Windows 11.
 - **Checkpointing:** the weights with the lowest validation loss are kept.
+- **Compute budget:** each training run was capped at about 90 minutes of wall-clock
+  time on the one GPU, a limit fixed when the project started. It keeps every stage
+  reproducible in one sitting on a single consumer card, and it treats every stage
+  the same. Stages 1, 2 and 5 ended well inside it, by their own stopping rule (100
+  epochs, or 40 epochs without improvement): 43.8, 5.8 and 8.4 minutes. Only stage 4
+  reached the budget (80.6 minutes). Section 4.4 says what that leaves open.
 - **Audio:** `render_audio.py` plays every sample through a General MIDI piano
   SoundFont (TimGM6mb, bundled with `pretty_midi`) and writes an MP3. The MP3s are
   checked automatically without listening: the decoded length matches the MIDI,
@@ -354,8 +392,8 @@ Overfitting is the other open problem from stage 2: a 95-piece corpus is small f
 million parameters. Stage 4 tests how far more data goes before the architecture
 question in Section 5.
 
-*Listening.* The recordings of every stage are provided for listening. The
-measurements above describe structure, not musical quality.
+*Listening.* The recordings of every stage are linked in [Recordings](#recordings) at
+the top. The measurements above describe structure, not musical quality.
 
 ### 4.4 Stage 4: more data (MAESTRO)
 
@@ -386,6 +424,32 @@ step-sequenced to a score.
 **Result.** 54,754 optimizer steps, about 27 passes over the training set, in 80.6
 minutes. (The log shows 80 "epochs" of up to 1,000 steps; because of how Keras walks
 a dataset of 2,029 batches, every third one is a 29-step remainder.)
+
+**Why the run stopped at 80 minutes, and what that leaves open.** The run was set up
+to fit the project's 90-minute budget (Section 3): 80 logged epochs at about a minute
+each, with early stopping after 10 epochs without improvement. Early stopping never
+triggered, so the budget, not convergence, ended the run. The trajectory shows how
+much was left:
+
+| passes over the training data | 9 | 18 | 27 (end) |
+|---|---|---|---|
+| MAESTRO validation loss | 2.173 | 2.069 | 2.037 |
+| piano-midi.de held-out loss | 1.977 | 1.864 | 1.838 |
+
+(Taken from `history.csv` at logged epochs 27, 54 and 80.)
+
+The gains were shrinking. Over the last 9 passes (about 27 minutes), MAESTRO
+validation loss fell by 0.032 and the piano-midi.de loss by 0.026, against 0.104 and
+0.113 over the 9 passes before. Even at the final rate, closing the remaining 0.059
+to stage 2's 1.779 would take about 20 more passes, roughly another hour; at a
+falling rate it would take longer. So the comparison with stage 2 on the sequenced
+pieces is a statement about equal-budget training, not about the best this model
+could reach on MAESTRO.
+
+The other stage-4 findings do not depend on the cut-off. There was no overfitting at
+any point, the domain difference shows in the samples' timing and polyphony, and the
+context probe has the same shape as for the early-stopped stage-2 and stage-5
+models.
 
 | | MAESTRO validation loss (accuracy) | piano-midi.de held-out loss (accuracy) | training loss |
 |---|---|---|---|
@@ -455,8 +519,8 @@ of onsets are followed by another within 100 ms, as in rolled chords and ornamen
 against none in stage 3, and 22–30% of notes are shorter than 60 ms. This also
 explains the lower audio-check score: the expected pitch rose at 1,019 of 1,349
 single-note onsets (76%). The check's 80 ms window often holds a neighbouring onset
-as well. In 2 windows of 250 ms the audio was silent although the MIDI holds a note;
-those are very short notes.
+as well. In 2 windows of 250 ms the audio was silent although the MIDI holds a note.
+Very short notes are the likely cause, but this was not checked further.
 
 **What is still wrong.** More data removed the overfitting and taught the model a
 second, expressive style. It changed neither the short effective context nor the
@@ -746,16 +810,15 @@ The risks:
 - **Simplified metrics.** The metrics are pooled histograms in the spirit of
   [Yang2020], not the full intra-set and inter-set analysis of that paper. They
   describe distributions, not musical quality.
-- **No listening study.** The recordings are provided for listening, but no study
-  was done.
 - **Prompts come from the reference pieces.** This inherits their key and register
   and flatters the pitch and pitch-class scores. The real-training-piece ceiling has
   no such advantage.
 - **What the tokens leave out.** They carry no velocity, tempo or pedalling. Note
   lengths and gaps are quantised to 16 values. Output is written at a fixed tempo.
-- **Stage 4 was cut short.** It was limited to about 80 minutes and was still
-  improving. It uses performance data that cannot be combined with the piano-midi.de
-  files under their licences. The stage-5 training changes were not tried on MAESTRO.
+- **Stage 4 was cut short.** It stopped at the project's per-run budget (80.6 of
+  about 90 minutes) while still improving slowly (Section 4.4). It uses performance
+  data that cannot be combined with the piano-midi.de files under their licences. The
+  stage-5 training changes were not tried on MAESTRO.
 - **Shared GPU timing.** Several runs shared the GPU with other jobs, so the
   per-epoch times are indicative only.
 

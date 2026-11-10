@@ -10,23 +10,45 @@ why, and the measured results. It closes with a discussion of where the LSTM sto
 a section on alternatives (Transformers, factorised chord-then-length classifiers
 and others), and references.
 
-## Stages and recordings
+## Listen to the results
 
-Every stage keeps its trained model, its samples (MIDI, piano roll, statistics) and MP3
-recordings under `results/`. GitHub does not play audio inside a README, so the
-recordings are linked: each link opens the file's page on GitHub, from which it can
-be downloaded.
+Every stage has three MP3 recordings, one per seed. The same seed continues the same
+held-out piece in every stage, so reading down a column compares the stages.
+GitHub does not play audio inside a README; each link opens the file's page on
+GitHub, from which it can be downloaded.
 
-| Stage | What changed | Listen |
-|---|---|---|
-| 1. Baseline | Tutorial tokens (one per note or chord, no timing), 3 × 512 LSTM | [1](results/stage1-baseline/samples/sample_seed1.mp3) · [2](results/stage1-baseline/samples/sample_seed2.mp3) · [3](results/stage1-baseline/samples/sample_seed3.mp3) |
-| 2. Timing, octaves, transposition | Event tokens with note lengths and exact pitches, all notes read, random transposition into 12 keys; same model | [1](results/stage2-rhythm-transpose/samples/sample_seed1.mp3) · [2](results/stage2-rhythm-transpose/samples/sample_seed2.mp3) · [3](results/stage2-rhythm-transpose/samples/sample_seed3.mp3) |
-| 3. Evaluation and sampling | Objective comparison with real music; grammar-constrained top-k 10 sampling; stage-2 model | [1](results/stage3-sampling-eval/samples/sample_seed1.mp3) · [2](results/stage3-sampling-eval/samples/sample_seed2.mp3) · [3](results/stage3-sampling-eval/samples/sample_seed3.mp3) |
-| 4. More data | The same model trained on MAESTRO's 962 recorded performances (27.6 times the tokens); stage-3 sampling | [1](results/stage4-maestro/samples/sample_seed1.mp3) · [2](results/stage4-maestro/samples/sample_seed2.mp3) · [3](results/stage4-maestro/samples/sample_seed3.mp3); MAESTRO-prompted: [1](results/stage4-maestro/samples-maestro/sample_seed1.mp3) · [2](results/stage4-maestro/samples-maestro/sample_seed2.mp3) · [3](results/stage4-maestro/samples-maestro/sample_seed3.mp3) |
-| 5. How the LSTM is trained | LayerNorm after each LSTM, Adam with gradient clipping; piano-midi.de data again; ablations of each change | [1](results/stage5-lstm-training/samples/sample_seed1.mp3) · [2](results/stage5-lstm-training/samples/sample_seed2.mp3) · [3](results/stage5-lstm-training/samples/sample_seed3.mp3) |
+| Stage | Seed 1: Chopin, Sonata Op. 35, finale | Seed 2: Mozart, Sonata K. 311, 1st movement | Seed 3: Chopin, Polonaise Op. 53 |
+|---|---|---|---|
+| 1. Baseline | [stage 1, seed 1 (MP3)](results/stage1-baseline/samples/sample_seed1.mp3) | [stage 1, seed 2 (MP3)](results/stage1-baseline/samples/sample_seed2.mp3) | [stage 1, seed 3 (MP3)](results/stage1-baseline/samples/sample_seed3.mp3) |
+| 2. Timing, octaves, transposition | [stage 2, seed 1 (MP3)](results/stage2-rhythm-transpose/samples/sample_seed1.mp3) | [stage 2, seed 2 (MP3)](results/stage2-rhythm-transpose/samples/sample_seed2.mp3) | [stage 2, seed 3 (MP3)](results/stage2-rhythm-transpose/samples/sample_seed3.mp3) |
+| 3. Better sampling | [stage 3, seed 1 (MP3)](results/stage3-sampling-eval/samples/sample_seed1.mp3) | [stage 3, seed 2 (MP3)](results/stage3-sampling-eval/samples/sample_seed2.mp3) | [stage 3, seed 3 (MP3)](results/stage3-sampling-eval/samples/sample_seed3.mp3) |
+| 4. More data (MAESTRO) | [stage 4, seed 1 (MP3)](results/stage4-maestro/samples/sample_seed1.mp3) | [stage 4, seed 2 (MP3)](results/stage4-maestro/samples/sample_seed2.mp3) | [stage 4, seed 3 (MP3)](results/stage4-maestro/samples/sample_seed3.mp3) |
+| 5. LayerNorm + Adam (current model) | [stage 5, seed 1 (MP3)](results/stage5-lstm-training/samples/sample_seed1.mp3) | [stage 5, seed 2 (MP3)](results/stage5-lstm-training/samples/sample_seed2.mp3) | [stage 5, seed 3 (MP3)](results/stage5-lstm-training/samples/sample_seed3.mp3) |
 
-Each stage's section in [`PAPER.md`](PAPER.md) gives the commit its code is at. In
-brief, comparing each model with the 10 held-out real pieces:
+The stage-4 model was also prompted with recorded MAESTRO performances, its own
+domain, and written at the speed they were played:
+[seed 1](results/stage4-maestro/samples-maestro/sample_seed1.mp3) ·
+[seed 2](results/stage4-maestro/samples-maestro/sample_seed2.mp3) ·
+[seed 3](results/stage4-maestro/samples-maestro/sample_seed3.mp3) (MP3).
+
+What each stage should sound like, from the measurements, is in the Recordings
+section at the top of [`PAPER.md`](PAPER.md#recordings). Next to every MP3 are its
+MIDI file, a piano-roll image and its statistics. All recordings use the same small
+General MIDI piano sound, so differences come from the notes.
+
+## Stages
+
+| Stage | What changed |
+|---|---|
+| 1. Baseline | Tutorial tokens (one per note or chord, no timing), 3 × 512 LSTM |
+| 2. Timing, octaves, transposition | Event tokens with note lengths and exact pitches, all notes read, random transposition into 12 keys; same model |
+| 3. Evaluation and sampling | Objective comparison with real music; grammar-constrained top-k 10 sampling; stage-2 model |
+| 4. More data | The same model trained on MAESTRO's 962 recorded performances (27.6 times the tokens); stage-3 sampling |
+| 5. How the LSTM is trained | LayerNorm after each LSTM, Adam with gradient clipping; piano-midi.de data again; ablations of each change |
+
+Each stage's section in [`PAPER.md`](PAPER.md) gives the commit its code is at.
+Every training run had a budget of about 90 minutes on one RTX 5070; only stage 4
+used most of it. In brief, comparing each model with the 10 held-out real pieces:
 
 | | held-out loss per event token | mean similarity (0–1) | patterns repeated |
 |---|---|---|---|
