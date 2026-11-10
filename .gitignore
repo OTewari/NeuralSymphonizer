@@ -8,6 +8,8 @@ venv/
 
 # Training by-products (the kept model files in models/ are listed in README.md)
 models/*.keras
+# training checkpoint incl. optimizer state (~46 MB); model.weights.h5 is the export
+models/best.weights.h5
 models/train_started.txt
 checkpoints/
 *.tmp

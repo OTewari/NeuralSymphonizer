@@ -116,6 +116,22 @@ def create_lstm(vocab_size, seq_len, units=512, layers=3, embedding_dim=64, drop
     return model
 
 
+def export_inference_weights(out_dir):
+    """Re-save the best checkpoint without the optimizer state (roughly half the size).
+
+    The training checkpoint (best.weights.h5) also stores RMSprop's per-weight
+    accumulators; MidiGeneration.py only needs the layer weights (model.weights.h5).
+    """
+    with open(os.path.join(out_dir, "config.json"), encoding="utf-8") as fh:
+        config = json.load(fh)
+    model = create_lstm(config["vocab_size"], config["seq_len"], config["units"], config["layers"],
+                        config["embedding_dim"], config["dropout"])
+    model.load_weights(os.path.join(out_dir, "best.weights.h5"), skip_mismatch=True)
+    path = os.path.join(out_dir, "model.weights.h5")
+    model.save_weights(path)
+    print(f"Inference weights -> {path} ({os.path.getsize(path) / 1e6:.1f} MB)")
+
+
 def plot_history(csv_path, png_path):
     import matplotlib
     matplotlib.use("Agg")
@@ -187,6 +203,7 @@ def train(args):
     minutes = (time.time() - start) / 60
     print(f"Training done in {minutes:.1f} min; best weights -> {weights_path}")
     plot_history(csv_path, os.path.join(args.out_dir, "loss_curve.png"))
+    export_inference_weights(args.out_dir)
     return model
 
 
