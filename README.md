@@ -188,3 +188,14 @@ notes rather than a composition.
   Beethoven and Mozart.
 - Whether the generated samples count as adaptations of the training files is not
   settled here; they are shared on the same CC BY-SA terms to be safe.
+
+## Licence
+
+- **Code:** MIT, see [`LICENSE`](LICENSE). Parts of the code are adapted from
+  Classical-Piano-Composer, which is also MIT-licensed; its copyright notice is
+  reproduced in [`NOTICE.md`](NOTICE.md).
+- **MIDI files and what is derived from them:** the MIT licence does not cover
+  `midi_files/`. Those files keep the Creative Commons Attribution-ShareAlike
+  terms described under [Credits](#credits). The token cache in `data/`, the
+  trained weights in `models/` and the generated files in `samples/` are derived
+  from them and are shared on the same terms to be safe.
