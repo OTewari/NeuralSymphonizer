@@ -23,5 +23,8 @@ checkpoints/
 .DS_Store
 Thumbs.db
 
+# Downloaded datasets (see get_maestro.py)
+data/maestro/
+
 # Ad-hoc generation output (MidiGeneration.py default)
 generated/

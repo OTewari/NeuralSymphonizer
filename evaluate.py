@@ -148,26 +148,42 @@ def markdown(reference, rows):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--reference", nargs="+", required=True,
-                   help="reference MIDI files or globs; 'held-out' = the validation pieces of --config")
+                   help="reference MIDI files or globs; 'held-out' = the validation pieces of --config; "
+                        "'maestro-validation:N' = N seeded MAESTRO validation performances")
     p.add_argument("--config", default=os.path.join("results", "stage2-rhythm-transpose", "model", "config.json"))
     p.add_argument("--midi-dir", default="midi_files")
     p.add_argument("--sets", nargs="+", required=True, help='"name=glob" pairs of generated files')
     p.add_argument("--real-sample", type=int, default=0,
                    help="also score N real training pieces (seeded choice) as a ceiling")
+    p.add_argument("--real-maestro", type=int, default=0,
+                   help="also score N real MAESTRO training performances (seeded choice)")
     p.add_argument("--json", help="also write the results to this JSON file")
     args = p.parse_args(argv)
 
     with open(args.config, encoding="utf-8") as fh:
         config = json.load(fh)
+    import random
+    maestro_rows = None
+    if args.reference[0].startswith("maestro-validation") or args.real_maestro:
+        import csv
+        root = os.path.join("data", "maestro", "maestro-v3.0.0")
+        with open(os.path.join(root, "maestro-v3.0.0.csv"), encoding="utf-8") as fh:
+            maestro_rows = [(r["split"], os.path.join(root, r["midi_filename"])) for r in csv.DictReader(fh)]
     if args.reference == ["held-out"]:
         ref = [os.path.join(args.midi_dir, n) for n in config["val_pieces"]]
+    elif args.reference[0].startswith("maestro-validation"):
+        # "maestro-validation:N" = N seeded MAESTRO validation performances
+        n = int(args.reference[0].split(":")[1])
+        ref = random.Random(0).sample(sorted(p for s, p in maestro_rows if s == "validation"), n)
     else:
         ref = sorted(f for g in args.reference for f in glob.glob(g))
     sets = {}
     if args.real_sample:
-        import random
         chosen = random.Random(0).sample(sorted(config["train_pieces"]), args.real_sample)
         sets[f"real training pieces ({args.real_sample})"] = [os.path.join(args.midi_dir, n) for n in chosen]
+    if args.real_maestro:
+        chosen = random.Random(0).sample(sorted(p for s, p in maestro_rows if s == "train"), args.real_maestro)
+        sets[f"real MAESTRO training performances ({args.real_maestro})"] = chosen
     for s in args.sets:
         name, pattern = s.split("=", 1)
         sets[name] = sorted(glob.glob(pattern))

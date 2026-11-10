@@ -107,13 +107,14 @@ def generate_tokens(model, vocab, config, prompt, n_notes, temperature, seed, ma
                           grammar)[0]
 
 
-def choose_prompt(pieces, config, prompt_len, rng, piece=None, start=None):
+def choose_prompt(pieces, config, prompt_len, rng, piece=None, start=None, names=None):
     """A prompt_len-token window starting at a time shift.
 
-    By default a random window of a random held-out piece; piece and start pick one.
+    By default a random window of a random held-out piece (or of one of `names`);
+    piece and start pick one.
     """
     if piece is None:
-        names = [n for n in config.get("val_pieces") or sorted(pieces)
+        names = [n for n in (names or config.get("val_pieces") or sorted(pieces))
                  if n in pieces and len(pieces[n]) > prompt_len + 1]
         if not names:
             raise SystemExit("No piece is long enough to provide a prompt")
@@ -167,6 +168,8 @@ def main(argv=None):
     p.add_argument("--top-p", type=float, default=1.0, help="nucleus sampling threshold (1.0 = off)")
     p.add_argument("--grammar", action="store_true",
                    help="never sample a token that breaks the P-then-D grammar (constrained decoding)")
+    p.add_argument("--prompt-source", choices=["piano-midi", "maestro"], default="piano-midi",
+                   help="take prompts from the piano-midi.de held-out pieces or the MAESTRO validation split")
     p.add_argument("--prompt-piece", default=None, help="file name in --midi-dir to take the prompt from")
     p.add_argument("--prompt-start", type=int, default=None, help="token index where the prompt starts")
     p.add_argument("--seed", type=int, default=0)
@@ -180,13 +183,19 @@ def main(argv=None):
 
     keras.utils.set_random_seed(args.seed)
     model, vocab, config = load_model(args.model_dir)
-    pieces = load_pieces(args.midi_dir)
+    if args.prompt_source == "maestro":
+        from MidiModelTraining import load_maestro
+        val = load_maestro(splits=("validation",))["validation"]
+        pieces = {n: [music_tokens.VOCAB[i] for i in ids] for n, ids in val.items()}
+        names = sorted(pieces)
+    else:
+        pieces, names = load_pieces(args.midi_dir), None
 
     seeds = list(range(args.seed, args.seed + args.count))
     prompts, outputs = [], []
     for s in seeds:
         prompts.append(choose_prompt(pieces, config, args.prompt_len, random.Random(s),
-                                     args.prompt_piece, args.prompt_start))
+                                     args.prompt_piece, args.prompt_start, names))
         base, ext = os.path.splitext(args.output)
         outputs.append(args.output if args.count == 1 else f"{base}_seed{s}{ext}")
     token_lists = generate_batch(model, vocab, config, [pr[2] for pr in prompts], args.notes, seeds,

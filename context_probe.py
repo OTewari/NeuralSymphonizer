@@ -45,12 +45,22 @@ def main(argv=None):
     p.add_argument("--model-dir", required=True)
     p.add_argument("--midi-dir", default="midi_files")
     p.add_argument("--seq-len", type=int, default=None, help="window length (default: the training length)")
+    p.add_argument("--source", choices=["piano-midi", "maestro"], default="piano-midi",
+                   help="held-out piano-midi.de pieces, or the first 40 MAESTRO validation performances")
     args = p.parse_args(argv)
 
     model, vocab, config = load_model(args.model_dir)
     seq_len = args.seq_len or config["seq_len"]
-    pieces = load_pieces(args.midi_dir)
-    loss, n = per_position_loss(model, vocab, config, pieces, config["val_pieces"], seq_len)
+    if args.source == "maestro":
+        # the first 40 MAESTRO validation performances (sorted by file name)
+        from MidiModelTraining import load_maestro
+        val = load_maestro(splits=("validation",))["validation"]
+        names = sorted(val)[:40]
+        pieces = {n: [vocab[i] for i in val[n]] for n in names}
+    else:
+        pieces = load_pieces(args.midi_dir)
+        names = config["val_pieces"]
+    loss, n = per_position_loss(model, vocab, config, pieces, names, seq_len)
     # Average over ranges [k, 2k) of positions: single positions are noisy because the
     # token type (time, pitch, length) at a given position varies between windows.
     table = {}
@@ -60,7 +70,7 @@ def main(argv=None):
     result = {"windows": n, "seq_len": seq_len, "mean_loss_by_context_range": table,
               "mean_loss": round(float(loss.mean()), 4)}
     print(json.dumps(result, indent=2))
-    out = os.path.join(args.model_dir, f"context_probe_{seq_len}")
+    out = os.path.join(args.model_dir, f"context_probe_{seq_len}" + ("_maestro" if args.source == "maestro" else ""))
     with open(out + ".json", "w", encoding="utf-8") as fh:
         json.dump(result, fh, indent=2)
 

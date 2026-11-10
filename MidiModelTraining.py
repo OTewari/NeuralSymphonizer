@@ -41,6 +41,39 @@ def load_pieces(midi_dir="midi_files", max_files=None):
     return {os.path.basename(f): music_tokens.encode_midi(f) for f in files}
 
 
+MAESTRO_ROOT = os.path.join("data", "maestro", "maestro-v3.0.0")
+
+
+def load_maestro(root=MAESTRO_ROOT, splits=("train", "validation")):
+    """Return {split: {midi_filename: token ids}} for MAESTRO v3.0.0 (see get_maestro.py).
+
+    Tokenising all 1,276 files takes about 2.5 minutes, so the result is cached in
+    <root>/tokens_cache.npz (inside the git-ignored download folder).
+    """
+    import csv
+
+    cache = os.path.join(root, "tokens_cache.npz")
+    if os.path.exists(cache):
+        data = numpy.load(cache, allow_pickle=False)
+        names, split_of, offsets, flat = data["names"], data["splits"], data["offsets"], data["tokens"]
+    else:
+        index = {t: i for i, t in enumerate(music_tokens.VOCAB)}
+        with open(os.path.join(root, "maestro-v3.0.0.csv"), encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        seqs = [numpy.array([index[t] for t in music_tokens.encode_midi(os.path.join(root, r["midi_filename"]))],
+                            dtype="int16") for r in rows]
+        names = numpy.array([r["midi_filename"] for r in rows])
+        split_of = numpy.array([r["split"] for r in rows])
+        offsets = numpy.cumsum([0] + [len(s) for s in seqs])
+        flat = numpy.concatenate(seqs)
+        numpy.savez(cache, names=names, splits=split_of, offsets=offsets, tokens=flat)
+    out = {s: {} for s in splits}
+    for i, (name, split) in enumerate(zip(names, split_of)):
+        if str(split) in out:
+            out[str(split)][str(name)] = flat[offsets[i]:offsets[i + 1]].astype("int32")
+    return out
+
+
 def split_pieces(pieces, val_fraction, seed):
     """Split piece names into train/validation lists (whole pieces, seeded shuffle)."""
     names = sorted(pieces)
@@ -143,6 +176,8 @@ def plot_history(csv_path, png_path):
     epochs = data["epoch"] + 1
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.plot(epochs, data["loss"], label="training loss")
+    if "pm_val_loss" in data.dtype.names:
+        ax.plot(epochs, data["pm_val_loss"], label="piano-midi.de held-out loss")
     if "val_loss" in data.dtype.names:
         ax.plot(epochs, data["val_loss"], label="validation loss")
         best = int(numpy.argmin(data["val_loss"]))
@@ -157,6 +192,19 @@ def plot_history(csv_path, png_path):
 
 
 # ---------------------------------------------------------------- training
+class ExtraValidation(keras.callbacks.Callback):
+    """Evaluate a second validation set each epoch and add it to the logs."""
+
+    def __init__(self, data, prefix):
+        super().__init__()
+        self.data, self.prefix = data, prefix
+
+    def on_epoch_end(self, epoch, logs=None):
+        loss, acc = self.model.evaluate(self.data, verbose=0)
+        if logs is not None:
+            logs[self.prefix + "loss"], logs[self.prefix + "accuracy"] = loss, acc
+
+
 def train(args):
     keras.utils.set_random_seed(args.seed)
     os.makedirs(args.out_dir, exist_ok=True)
@@ -168,18 +216,32 @@ def train(args):
     ids = {n: [note_to_int[t] for t in toks] for n, toks in pieces.items()}
 
     transpose = (args.transpose_min, args.transpose_max)
-    train_data = Windows([ids[n] for n in train_names], vocab, args.seq_len, args.batch_size, True,
-                         transpose, args.seed)
-    val_data = Windows([ids[n] for n in val_names], vocab, args.seq_len, args.batch_size, False)
-    n_train_tokens = sum(len(ids[n]) for n in train_names)
+    extra_val = None
+    if args.dataset == "maestro":
+        # Train and select checkpoints on MAESTRO; also score the piano-midi.de held-out
+        # pieces every epoch ("pm_val_*") so results compare with earlier stages.
+        maestro = load_maestro(args.maestro_root)
+        train_seqs, val_seqs = list(maestro["train"].values()), list(maestro["validation"].values())
+        extra_val = Windows([ids[n] for n in val_names], vocab, args.seq_len, args.batch_size, False)
+        source = f"{len(train_seqs)} MAESTRO train performances"
+    else:
+        train_seqs, val_seqs = [ids[n] for n in train_names], [ids[n] for n in val_names]
+        source = f"{len(train_names)} pieces"
+    train_data = Windows(train_seqs, vocab, args.seq_len, args.batch_size, True, transpose, args.seed)
+    val_data = Windows(val_seqs, vocab, args.seq_len, args.batch_size, False)
+    n_train_tokens = sum(len(s) for s in train_seqs)
     print(f"vocab {len(vocab)} | train {n_train_tokens} tokens, {len(train_data.index)} windows "
-          f"from {len(train_names)} pieces | val {len(val_data.index)} windows from {len(val_names)} pieces "
+          f"from {source} | val {len(val_data.index)} windows from {len(val_seqs)} pieces "
           f"| transpose {transpose}")
 
-    config = {"stage": 2, "seq_len": args.seq_len, "units": args.units, "layers": args.layers,
-              "embedding_dim": args.embedding_dim, "dropout": args.dropout, "seed": args.seed,
-              "vocab_size": len(vocab), "transpose": list(transpose), "batch_size": args.batch_size,
-              "train_pieces": train_names, "val_pieces": val_names}
+    config = {"stage": args.stage, "dataset": args.dataset, "seq_len": args.seq_len, "units": args.units,
+              "layers": args.layers, "embedding_dim": args.embedding_dim, "dropout": args.dropout,
+              "seed": args.seed, "vocab_size": len(vocab), "transpose": list(transpose),
+              "batch_size": args.batch_size, "train_tokens": n_train_tokens,
+              "train_pieces": train_names if args.dataset == "piano-midi" else f"MAESTRO v3.0.0 train split ({len(train_seqs)} files)",
+              "val_pieces": val_names,
+              "checkpoint_validation": "piano-midi.de held-out pieces" if args.dataset == "piano-midi"
+              else f"MAESTRO v3.0.0 validation split ({len(val_seqs)} files)"}
     with open(os.path.join(args.out_dir, "vocab.json"), "w", encoding="utf-8") as fh:
         json.dump(vocab, fh)
     with open(os.path.join(args.out_dir, "config.json"), "w", encoding="utf-8") as fh:
@@ -192,7 +254,8 @@ def train(args):
     monitor = "val_loss" if has_val else "loss"
     weights_path = os.path.join(args.out_dir, "best.weights.h5")
     csv_path = os.path.join(args.out_dir, "history.csv")
-    callbacks = [
+    callbacks = [ExtraValidation(extra_val, "pm_val_")] if extra_val is not None else []
+    callbacks += [
         keras.callbacks.ModelCheckpoint(weights_path, monitor=monitor, save_best_only=True,
                                         save_weights_only=True, mode="min"),
         keras.callbacks.CSVLogger(csv_path),
@@ -212,6 +275,10 @@ def train(args):
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--dataset", choices=["piano-midi", "maestro"], default="piano-midi",
+                   help="training data: the piano-midi.de files in --midi-dir, or MAESTRO (get_maestro.py)")
+    p.add_argument("--maestro-root", default=MAESTRO_ROOT)
+    p.add_argument("--stage", type=int, default=2, help="stage number recorded in config.json")
     p.add_argument("--midi-dir", default="midi_files")
     p.add_argument("--out-dir", default="models")
     p.add_argument("--epochs", type=int, default=200)
