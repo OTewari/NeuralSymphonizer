@@ -22,3 +22,6 @@ checkpoints/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Ad-hoc generation output (MidiGeneration.py default)
+generated/

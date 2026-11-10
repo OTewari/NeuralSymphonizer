@@ -40,6 +40,18 @@ class TokenTest(unittest.TestCase):
         self.assertEqual(vocab[up[vocab.index("D12")]], "D12")
 
 
+class SamplingTest(unittest.TestCase):
+    def test_top_k_and_top_p_restrict_the_choice(self):
+        import numpy
+        probs = numpy.array([0.5, 0.3, 0.15, 0.05])
+        rng = numpy.random.default_rng(0)
+        self.assertEqual({MidiGeneration.sample(probs, 1.0, rng, top_k=1) for _ in range(50)}, {0})
+        self.assertEqual({MidiGeneration.sample(probs, 1.0, rng, top_k=2) for _ in range(300)}, {0, 1})
+        self.assertEqual({MidiGeneration.sample(probs, 1.0, rng, top_p=0.75) for _ in range(300)}, {0, 1})
+        self.assertEqual({MidiGeneration.sample(probs, 1.0, rng, top_p=0.85) for _ in range(500)}, {0, 1, 2})
+        self.assertEqual(MidiGeneration.sample(probs, 0, rng), 0)
+
+
 class RenderTest(unittest.TestCase):
     def test_tokens_to_mp3_and_mp4(self):
         tmp = tempfile.mkdtemp()
