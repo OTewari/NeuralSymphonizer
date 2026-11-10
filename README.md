@@ -77,8 +77,10 @@ python MidiGeneration.py --seed 1 --length 200 --temperature 1.0 --output sample
 Options: `--length` (tokens to generate), `--seed`, `--temperature`, `--step`
 (token duration in quarter notes), `--output`, `--piano-roll` (also writes a PNG
 next to the MIDI file), `--model-dir`. The script prints statistics for the output
-(see below). On the same machine the same seed gives the same file; a different
-GPU, or the CPU, may differ slightly.
+(see below). On the same machine the same seed gives the same file. On other
+hardware it may not: run on the CPU, seed 2 produced a different sample from the
+committed GPU one, because tiny numerical differences change which token is
+sampled and everything after it follows from that.
 
 ## Train
 
