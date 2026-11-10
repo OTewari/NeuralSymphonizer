@@ -132,25 +132,48 @@ class Windows(keras.utils.PyDataset):
 
 
 # ---------------------------------------------------------------- model
-def create_lstm(vocab_size, units=512, layers=3, embedding_dim=64, dropout=0.2):
-    """Sequence-to-sequence LSTM; accepts windows of any length."""
+def create_lstm(vocab_size, units=512, layers=3, embedding_dim=64, dropout=0.2,
+                variational_dropout=False, layer_norm=False, optimizer="rmsprop",
+                learning_rate=None, clipnorm=None):
+    """Sequence-to-sequence LSTM; accepts windows of any length.
+
+    Stage-5 options (all off by default, which gives the stage-2/4 model):
+    variational_dropout  drop the same features at every time step (SpatialDropout1D)
+                         instead of fresh units per step, on the connections between
+                         layers only, so the cuDNN LSTM kernel still applies
+                         (Gal & Ghahramani, 2016; Zaremba et al., 2014)
+    layer_norm           LayerNormalization after each LSTM layer (Ba et al., 2016)
+    optimizer, learning_rate, clipnorm
+                         e.g. Adam with gradient-norm clipping (Kingma & Ba, 2014;
+                         Pascanu et al., 2013)
+    """
+    drop = keras.layers.SpatialDropout1D if variational_dropout else keras.layers.Dropout
     model = keras.Sequential([keras.Input(shape=(None,), dtype="int32"),
                               keras.layers.Embedding(vocab_size, embedding_dim)])
+    if variational_dropout:
+        model.add(drop(dropout))
     for _ in range(layers):
         model.add(keras.layers.LSTM(units, return_sequences=True))
-        model.add(keras.layers.Dropout(dropout))
+        if layer_norm:
+            model.add(keras.layers.LayerNormalization())
+        model.add(drop(dropout))
     model.add(keras.layers.Dense(256, activation="relu"))
     model.add(keras.layers.Dropout(dropout))
     model.add(keras.layers.Dense(vocab_size, activation="softmax"))
-    model.compile(loss="sparse_categorical_crossentropy", optimizer="rmsprop", metrics=["accuracy"])
+    opt_args = {k: v for k, v in (("learning_rate", learning_rate), ("clipnorm", clipnorm)) if v}
+    opt = {"rmsprop": keras.optimizers.RMSprop, "adam": keras.optimizers.Adam}[optimizer](**opt_args)
+    model.compile(loss="sparse_categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
     return model
+
+
+MODEL_KEYS = ("units", "layers", "embedding_dim", "dropout", "variational_dropout", "layer_norm",
+              "optimizer", "learning_rate", "clipnorm")
 
 
 def build_from_config(model_dir):
     with open(os.path.join(model_dir, "config.json"), encoding="utf-8") as fh:
         config = json.load(fh)
-    model = create_lstm(config["vocab_size"], config["units"], config["layers"],
-                        config["embedding_dim"], config["dropout"])
+    model = create_lstm(config["vocab_size"], **{k: config[k] for k in MODEL_KEYS if k in config})
     return model, config
 
 
@@ -236,6 +259,8 @@ def train(args):
 
     config = {"stage": args.stage, "dataset": args.dataset, "seq_len": args.seq_len, "units": args.units,
               "layers": args.layers, "embedding_dim": args.embedding_dim, "dropout": args.dropout,
+              "variational_dropout": args.variational_dropout, "layer_norm": args.layer_norm,
+              "optimizer": args.optimizer, "learning_rate": args.learning_rate, "clipnorm": args.clipnorm,
               "seed": args.seed, "vocab_size": len(vocab), "transpose": list(transpose),
               "batch_size": args.batch_size, "train_tokens": n_train_tokens,
               "train_pieces": train_names if args.dataset == "piano-midi" else f"MAESTRO v3.0.0 train split ({len(train_seqs)} files)",
@@ -247,7 +272,7 @@ def train(args):
     with open(os.path.join(args.out_dir, "config.json"), "w", encoding="utf-8") as fh:
         json.dump(config, fh, indent=2)
 
-    model = create_lstm(len(vocab), args.units, args.layers, args.embedding_dim, args.dropout)
+    model = create_lstm(len(vocab), **{k: config[k] for k in MODEL_KEYS})
     model.summary()
 
     has_val = len(val_data) > 0
@@ -288,6 +313,12 @@ def parse_args(argv=None):
     p.add_argument("--layers", type=int, default=3, help="number of stacked LSTM layers")
     p.add_argument("--embedding-dim", type=int, default=64)
     p.add_argument("--dropout", type=float, default=0.2)
+    p.add_argument("--variational-dropout", action="store_true",
+                   help="same dropout mask at every time step between layers (stage 5)")
+    p.add_argument("--layer-norm", action="store_true", help="LayerNormalization after each LSTM (stage 5)")
+    p.add_argument("--optimizer", choices=["rmsprop", "adam"], default="rmsprop")
+    p.add_argument("--learning-rate", type=float, default=None, help="default: the optimizer's own")
+    p.add_argument("--clipnorm", type=float, default=None, help="gradient-norm clipping threshold")
     p.add_argument("--val-split", type=float, default=0.1, help="fraction of pieces held out")
     p.add_argument("--transpose-min", type=int, default=-6, help="lowest random transposition (semitones)")
     p.add_argument("--transpose-max", type=int, default=5, help="highest random transposition; 0 0 = off")
