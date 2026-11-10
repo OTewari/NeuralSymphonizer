@@ -40,7 +40,16 @@ SOFTWARE.
 
 The files in `midi_files/` are by Bernd Krueger, <http://www.piano-midi.de>,
 and are distributed under a Creative Commons Attribution-ShareAlike licence
-(Germany). They are not covered by the MIT licence. The token cache in `data/`,
-the trained weights and the generated files in `results/` are
-derived from them and are shared on the same terms to be safe. See the Credits
+(Germany). They are not covered by the MIT licence. The trained weights and the
+generated files in `results/` are derived from them and are shared on the same
+terms to be safe, except `results/stage4-maestro/` (see below). See the Credits
 section of [`README.md`](README.md) for the details.
+
+## MAESTRO
+
+`results/stage4-maestro/` holds a model trained on, and samples prompted from,
+MAESTRO v3.0.0 (Hawthorne et al., ICLR 2019), made available by Google LLC under
+the Creative Commons Attribution Non-Commercial Share-Alike 4.0 licence
+(<https://magenta.tensorflow.org/datasets/maestro>). That folder is shared on the
+same CC BY-NC-SA 4.0 terms. The MAESTRO files themselves are not in this
+repository; `get_maestro.py` downloads them.

@@ -2,14 +2,20 @@
 
 An LSTM that learns to continue classical piano music from MIDI files, improved one
 documented stage at a time. It began as a reproduction of Sigurður Skúli's 2017 Keras
-tutorial (see [Credits](#credits)). **[`PAPER.md`](PAPER.md)** is the full write-up:
-what limited each stage, what was changed and why, and the measured results.
+tutorial (see [Credits](#credits)).
+
+**[`PAPER.md`](PAPER.md)** is the full write-up, in the form of a short research
+paper. For each stage it covers what limited the stage before, what was changed and
+why, and the measured results. It closes with a discussion of where the LSTM stops,
+a section on alternatives (Transformers, factorised chord-then-length classifiers
+and others), and references.
 
 ## Stages and recordings
 
 Every stage keeps its trained model, its samples (MIDI, piano roll, statistics) and MP3
 recordings under `results/`. GitHub does not play audio inside a README, so the
-recordings are linked; open one and use GitHub's download or raw button to listen.
+recordings are linked: each link opens the file's page on GitHub, from which it can
+be downloaded.
 
 | Stage | What changed | Listen |
 |---|---|---|

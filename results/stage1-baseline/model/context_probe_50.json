@@ -1,0 +1,41 @@
+{
+ "val_windows": 9610,
+ "loss_by_context": {
+  "1": {
+   "loss": 7.637,
+   "acc": 0.0536
+  },
+  "2": {
+   "loss": 5.902,
+   "acc": 0.0683
+  },
+  "5": {
+   "loss": 4.533,
+   "acc": 0.0942
+  },
+  "10": {
+   "loss": 4.268,
+   "acc": 0.1235
+  },
+  "20": {
+   "loss": 4.215,
+   "acc": 0.1278
+  },
+  "35": {
+   "loss": 4.198,
+   "acc": 0.1273
+  },
+  "50": {
+   "loss": 4.194,
+   "acc": 0.1271
+  }
+ },
+ "repetition": {
+  "tokens": 9954,
+  "share_8gram_seen_before_in_piece": 0.388,
+  "share_nearest_copy_within_50": 0.08,
+  "share_nearest_copy_51_to_500": 0.197,
+  "share_nearest_copy_beyond_500": 0.111,
+  "median_distance": 227
+ }
+}

@@ -2,9 +2,34 @@
 
 Ojasvi Tewari · NeuralSymphonizer · November 2026
 
-*This write-up grows one stage at a time. Each stage is one or two commits on the
+*This write-up was written one stage at a time. Each stage is one or two commits on the
 `complete-generation` branch, and the trained model, samples and recordings of every
 stage are kept under `results/` so the progression can be heard, not just read.*
+
+## Abstract
+
+A tutorial-style LSTM piano-music generator is improved in five measured stages,
+keeping a 3-layer, 512-unit LSTM throughout.
+
+- **Representation and augmentation (stage 2).** Similarity to held-out real music,
+  measured as feature-distribution overlap from 0 to 1, rises from 0.54 to 0.77. This
+  stage adds timing and octaves to the tokens, fixes a parser bug that silently
+  skipped 16 of the 95 training files, and transposes training data into all 12 keys.
+- **Sampling (stage 3).** Unconstrained sampling occasionally collapses into an
+  endless run of invalid tokens. Grammar-constrained decoding prevents that. No
+  truncation rule measurably changes the similarity.
+- **More data (stage 4).** Training on 27.6 times more data (MAESTRO) removes
+  overfitting, but what is learned from recorded performances does not transfer to
+  step-sequenced scores.
+- **Training (stage 5).** LayerNorm with Adam lowers held-out loss from 1.78 to 1.49
+  per token, the largest gain of the study, and the gain holds with a second seed.
+
+One limit survives every stage. Every model's held-out loss stops improving after
+32–63 tokens of context, about one bar, while real pieces repeat material from a
+median of about four bars back. The samples repeat at most 5.7% of their 4-onset
+patterns, against 66% in real music. An attention-based model is therefore the
+justified next step. The last sections discuss Transformers, factorised
+chord-then-length classifiers and other alternatives.
 
 ## 1. Introduction
 
@@ -540,3 +565,252 @@ study, and the first measurable repetition. But it did not lengthen the context 
 model uses, and the samples still repeat themselves about a tenth as often as real
 music does. Section 5 puts the five stages side by side and asks whether the
 remaining gap is the LSTM itself.
+
+## 5. Discussion: where the LSTM stops
+
+### 5.1 What each stage bought
+
+| stage | change | effect, measured on the 10 held-out pieces |
+|---|---|---|
+| 1 | tutorial reproduction | mean similarity 0.540; no rhythm; 16 of 95 files never read |
+| 2 | timing and octave tokens, all notes read, transposition | similarity 0.771 (timing overlaps 0.21–0.23 rose to 0.85); held-out loss 1.779 |
+| 3 | evaluation; grammar-constrained top-k sampling | no more collapsed samples; fewer stray notes; similarity unchanged within noise |
+| 4 | 27.6 times the data (MAESTRO performances) | overfitting gone, much better in its own domain (0.862 against 0.749), but worse on the sequenced pieces (1.838) |
+| 5 | LayerNorm, Adam, clipping | held-out loss 1.490, accuracy 59.5%; repetition 5.7%; similarity unchanged (0.758) |
+
+Two results were not expected at the outset. The largest single gain in likelihood
+came from a training change (stage 5), not from data. And none of the likelihood gains
+after stage 2 moved the distribution-level similarity outside its noise band. The
+model got better at predicting the next token without its samples getting measurably
+closer to real music overall. That is why both kinds of measurement are reported.
+Validation loss alone would have told a more flattering story.
+
+### 5.2 The limit that survives every stage
+
+Two measurements stayed almost constant from stage 1 to stage 5.
+
+**Effective context.** Held-out loss stops improving after a short prefix:
+
+| model | where the loss stops improving | source |
+|---|---|---|
+| stage 1 (50-token windows, its own tokens) | 98% of the drop within 10 tokens | `results/stage1-baseline/model/context_probe_50.json` |
+| stage 2 | 32–63 tokens, flat to 1,024 | `results/stage2-rhythm-transpose/model/context_probe_1024.json` |
+| stage 4, on MAESTRO validation | 32–63 tokens, flat to 1,024 | `results/stage4-maestro/model/context_probe_1024_maestro.json` |
+| stage 5 | 32–63 tokens, then 1.40–1.54 to 1,024 | `results/stage5-lstm-training/b-layernorm-adam-clip/context_probe_1024.json` |
+
+In the held-out pieces, 32–63 tokens is about 2 to 4 beats, roughly one bar of 4/4
+(14.5 tokens per beat). The stage-1 probe was run with the stage-1 code before stage 2 (by truncating its input):
+held-out loss was 4.268 with the last 10 of its 50 tokens and 4.194 with all 50.
+
+**Repetition.** In the held-out pieces, 66% of 4-onset patterns repeat an earlier
+pattern of the same piece (`repetition_distance.py`, output in
+`results/analysis/repetition_distance.json`):
+- The nearest earlier copy is a median of 48 onsets back: 240 tokens, about 16.5
+  beats, roughly four bars.
+- 47% of all patterns repeat from more than 64 tokens back, beyond the context the
+  models use.
+- 32% repeat from beyond the 256-token training window.
+- 17% repeat from more than 1,024 tokens back.
+
+The generated samples repeat 0.3% to 5.7% of their patterns.
+
+These two facts fit together. The LSTM is good at the next note within a bar.
+Musical form (returning motifs, sequences, repeated sections) sits about four bars
+away, and the model does not reach it. Neither more data (stage 4) nor better
+training (stage 5) changed the context it uses. Stage 5's LayerNorm
+produced the first measurable repetition, but only a tenth of real
+music's. This matches the motivation of earlier work: Lookback RNN added explicit
+inputs from one and two bars back to an LSTM because the plain model missed that
+structure [Waite2016]. Music Transformer reports that attention produces coherent
+structure over minute-long piano pieces [Huang2018].
+
+### 5.3 Is a Transformer needed?
+
+Before stage 2, the decision rule was set as follows. Build a Transformer only if,
+after the representation, data and training stages, (1) the LSTM's held-out loss
+still stops improving well inside its window, and (2) real music still repeats from
+further back than that. Both conditions hold after every stage. By that rule, the
+next step is an attention-based model. The evidence also bounds the expectation:
+
+- **The target is long-range structure, not next-note accuracy.** Success should be
+  measured by the repetition share and the context probe, with the same held-out
+  pieces and metrics as here.
+- **Data limits what a Transformer can do here.** The 95-piece corpus overfit within
+  25–60 epochs even for the LSTM. MAESTRO has the volume, but stage 4 showed it does
+  not transfer to sequenced scores. A Transformer for this project would most
+  sensibly be trained and judged on MAESTRO, in its own domain, as Music Transformer
+  was.
+- **Cheaper intermediate steps exist.** One token per onset (Section 6.2) would
+  stretch the same LSTM state over about 4.6 times as much music. Explicit
+  lookback inputs [Waite2016] would hand it the material from one and two bars back.
+
+## 6. Alternatives
+
+The stages above keep one architecture so that each change can be measured. This
+section collects the approaches that change the architecture or the output, and
+says which measured limit each would address. None of them was built in this study.
+
+### 6.1 Transformers
+
+A Transformer [Vaswani2017] replaces the recurrent state with self-attention: every
+position looks up any earlier position directly. That targets the two limits measured
+in Section 5:
+
+- **Context.** The LSTM's loss stops improving after a few dozen tokens. With
+  attention, a phrase 240 tokens back (the median distance of a repeat, Section 5.2)
+  is one lookup away, not something that has to survive 240 state updates.
+- **Repetition.** Real pieces repeat 60–66% of their 4-onset patterns, and the
+  samples almost never do. Copying earlier material is exactly what attention makes
+  easy.
+
+Music Transformer [Huang2018] adds relative attention, which compares positions by
+their distance. It generates minute-long piano pieces from Piano-e-Competition
+performances, the same source as MAESTRO, and was judged more coherent in listening
+tests than a Transformer without it. Later work builds metrical structure into the
+tokens and the model: REMI with Transformer-XL [Huang2020], and Museformer [Yu2022],
+which attends fully to the bars most likely to be repeated (1, 2, 4 and 8 bars back)
+and only to summaries of the rest.
+
+The costs are data and memory. Attention cost grows with the square of the context
+length, and Transformers usually need more data than an LSTM of similar size. On the
+95-piece corpus, the stage-2 LSTM already overfit. Section 5.3 applies the decision
+rule set before stage 2 and concludes that a Transformer is the justified next step,
+most sensibly trained on MAESTRO.
+
+### 6.2 Factorised outputs: a chord classifier, then a length classifier
+
+Instead of one softmax over a flat token stream, the model could make one step per
+onset and split the prediction into conditioned classifiers:
+
+1. When the next onset comes (a time shift, or "nothing yet", which gives rests).
+2. Which pitches sound at it: a chord or single note, as an 88-way multi-label output
+   or a chord vocabulary.
+3. How long each pitch lasts, conditioned on the first two.
+
+There is direct precedent:
+- **BachProp [Colombo2018]:** a 3-layer LSTM predicts timing, then duration given
+  timing, then pitch given both, each with its own softmax.
+- **Compound Word Transformer [Hsiao2021]:** predicts a token "family" first, then
+  type-specific heads in parallel, conditioned on the family.
+- **Multitrack Music Transformer [Dong2022]:** uses independent heads per field, and
+  notes that this cannot capture dependencies between fields of the same note. So
+  the heads should be conditioned.
+- **Colombo et al. 2016 [Colombo2016]:** model rhythm and melody in parallel networks.
+
+For this project it would help in two measured ways:
+- **Fewer steps per onset.** The stage-2 tokens spend about 4.6 tokens per onset.
+  One step per onset would let the same LSTM state span about 4.6 times as much music,
+  which bears directly on the short effective context in Section 5.
+- **Grammar by construction.** A pitch can never lack a length, so stage 3's
+  constrained decoding would be unnecessary.
+
+The risks:
+- **Rare chords.** A chord vocabulary brings back stage 1's long tail of rare chords
+  (780 tokens). A multi-label pitch output avoids that, but needs a sampling rule for
+  sets of notes.
+- **Conditioning matters.** The heads must be conditioned on each other; independent
+  heads lose the dependencies between fields.
+
+### 6.3 Other approaches
+
+- **Hierarchical and memory-augmented recurrent models.** Lookback RNN and Attention
+  RNN [Waite2016] add inputs from 1 and 2 bars back, or attention over recent
+  outputs, to an LSTM. They are a cheaper step towards the repetition the samples
+  lack.
+- **Shorter token sequences.** Byte-pair encoding over music tokens [Fradet2023],
+  available in MidiTok [Fradet2021], merges frequent token groups. That shortens
+  sequences, which is what an LSTM's limited memory needs. Metrical tokens (bar and
+  position, as in REMI [Huang2020]) give the model a beat to align repetitions to.
+- **Piano-roll models.** RNN-RBM [BoulangerLewandowski2012] models all 88 keys at
+  each time step jointly, instead of one event at a time.
+- **Latent-variable models.** MusicVAE's hierarchical decoder [Roberts2018] first
+  plans one embedding per bar, then decodes each bar. Structure is planned explicitly
+  rather than hoped for.
+- **GANs and diffusion.** MuseGAN [Dong2018] generates multi-track piano rolls.
+  Diffusion in MusicVAE's latent space [Mittal2021] generates non-autoregressively,
+  which allows infilling.
+- **State-space models.** MusicMamba [Chen2024] and SMDIM [Xu2026] use state-space
+  layers for long sequences at near-linear cost. The verified examples target folk
+  and mixed corpora, not Western piano MIDI.
+- **Tuning before replacing.** Melis et al. [Melis2017] found that a well-regularised,
+  carefully tuned standard LSTM beats newer architectures on language modelling.
+  Stage 5 is a small instance of that: a training change alone gave the largest
+  single drop in held-out loss of any stage.
+
+## 7. Limitations of this study
+
+- **Small held-out set.** The comparison set is 10 pieces; bootstrap intervals over
+  the generated files are reported, but the reference itself is small.
+- **Mostly single runs.** Each configuration was trained once (seed 42). Only the
+  stage-5 comparison was repeated with a second seed.
+- **Simplified metrics.** The metrics are pooled histograms in the spirit of
+  [Yang2020], not the full intra-set and inter-set analysis of that paper. They
+  describe distributions, not musical quality.
+- **No listening study.** The recordings are provided for listening, but no study
+  was done.
+- **Prompts come from the reference pieces.** This inherits their key and register
+  and flatters the pitch and pitch-class scores. The real-training-piece ceiling has
+  no such advantage.
+- **What the tokens leave out.** They carry no velocity, tempo or pedalling. Note
+  lengths and gaps are quantised to 16 values. Output is written at a fixed tempo.
+- **Stage 4 was cut short.** It was limited to about 80 minutes and was still
+  improving. It uses performance data that cannot be combined with the piano-midi.de
+  files under their licences. The stage-5 training changes were not tried on MAESTRO.
+- **Shared GPU timing.** Several runs shared the GPU with other jobs, so the
+  per-epoch times are indicative only.
+
+## 8. Reproducibility
+
+All commands, seeds and results are in the repository. Every model's `config.json`
+records its settings, and `history.csv` records every epoch.
+
+| stage | code | results | training command (from the repository root) |
+|---|---|---|---|
+| 1 | `fc3f7a8` (stage-1 code) | `results/stage1-baseline/` | `python MidiModelTraining.py --epochs 100 --units 512 --layers 3 --batch-size 64 --seed 42` at that commit |
+| 2 | `e10cc4d` | `results/stage2-rhythm-transpose/` | `python MidiModelTraining.py --epochs 500 --patience 40 --units 512 --layers 3 --seq-len 256 --batch-size 32 --seed 42 --out-dir results/stage2-rhythm-transpose/model` |
+| 3 | `857fd91`, results in `434c44f` | `results/stage3-sampling-eval/` | no training; sampling grid and `evaluate.py` |
+| 4 | `ecfdfa4` | `results/stage4-maestro/` | `python get_maestro.py`, then `python MidiModelTraining.py --dataset maestro --stage 4 --epochs 80 --steps-per-epoch 1000 --patience 10 --units 512 --layers 3 --seq-len 256 --batch-size 32 --seed 42 --out-dir results/stage4-maestro/model` |
+| 5 | `4934b94` | `results/stage5-lstm-training/` | the stage-2 command with `--stage 5 --layer-norm --optimizer adam --learning-rate 0.001 --clipnorm 1.0 --out-dir results/stage5-lstm-training/b-layernorm-adam-clip` |
+
+Evaluation sets used seeds 101–120 with `--count 20 --notes 300`. Listening samples
+used seeds 1–3. The sampling options are in each sample's `.json`. Generation is
+deterministic on one machine and may differ on other hardware.
+
+## References
+
+All entries were checked against their arXiv, publisher or official pages on
+2026-11-10.
+
+- [Ba2016] J. L. Ba, J. R. Kiros, G. E. Hinton. Layer Normalization. arXiv, 2016. https://arxiv.org/abs/1607.06450
+- [BoulangerLewandowski2012] N. Boulanger-Lewandowski, Y. Bengio, P. Vincent. Modeling Temporal Dependencies in High-Dimensional Sequences: Application to Polyphonic Music Generation and Transcription. ICML 2012. https://arxiv.org/abs/1206.6392
+- [Chen2024] J. Chen, T. Xie, X. Tang, J. Wang, W. Dong, B. Shi. MusicMamba: A Dual-Feature Modeling Approach for Generating Chinese Traditional Music with Modal Precision. ICASSP 2025. https://arxiv.org/abs/2409.02421
+- [Colombo2016] F. Colombo, S. P. Muscinelli, A. Seeholzer, J. Brea, W. Gerstner. Algorithmic Composition of Melodies with Deep Recurrent Neural Networks. 1st Conference on Computer Simulation of Musical Creativity, 2016. https://arxiv.org/abs/1606.07251
+- [Colombo2018] F. Colombo, W. Gerstner. BachProp: Learning to Compose Music in Multiple Styles. arXiv, 2018. https://arxiv.org/abs/1802.05162
+- [Dong2018] H.-W. Dong, W.-Y. Hsiao, L.-C. Yang, Y.-H. Yang. MuseGAN: Multi-track Sequential Generative Adversarial Networks for Symbolic Music Generation and Accompaniment. AAAI 2018. https://arxiv.org/abs/1709.06298
+- [Dong2022] H.-W. Dong, K. Chen, S. Dubnov, J. McAuley, T. Berg-Kirkpatrick. Multitrack Music Transformer. ICASSP 2023. https://arxiv.org/abs/2207.06983
+- [Fan2018] A. Fan, M. Lewis, Y. Dauphin. Hierarchical Neural Story Generation. arXiv, 2018. https://arxiv.org/abs/1805.04833
+- [Fradet2021] N. Fradet, J.-P. Briot, F. Chhel, A. El Fallah Seghrouchni, N. Gutowski. MidiTok: A Python package for MIDI file tokenization. ISMIR 2021 Late-Breaking Demo. https://archives.ismir.net/ismir2021/latebreaking/000005.pdf
+- [Fradet2023] N. Fradet, N. Gutowski, F. Chhel, J.-P. Briot. Byte Pair Encoding for Symbolic Music. EMNLP 2023. https://arxiv.org/abs/2301.11975
+- [Gal2016] Y. Gal, Z. Ghahramani. A Theoretically Grounded Application of Dropout in Recurrent Neural Networks. NIPS 2016. https://arxiv.org/abs/1512.05287
+- [Hawthorne2019] C. Hawthorne, A. Stasyuk, A. Roberts, I. Simon, C.-Z. A. Huang, S. Dieleman, E. Elsen, J. Engel, D. Eck. Enabling Factorized Piano Music Modeling and Generation with the MAESTRO Dataset. ICLR 2019. https://arxiv.org/abs/1810.12247 ; dataset: https://magenta.tensorflow.org/datasets/maestro
+- [Holtzman2019] A. Holtzman, J. Buys, L. Du, M. Forbes, Y. Choi. The Curious Case of Neural Text Degeneration. ICLR 2020. https://arxiv.org/abs/1904.09751
+- [Hsiao2021] W.-Y. Hsiao, J.-Y. Liu, Y.-C. Yeh, Y.-H. Yang. Compound Word Transformer: Learning to Compose Full-Song Music over Dynamic Directed Hypergraphs. arXiv, 2021. https://arxiv.org/abs/2101.02402
+- [Huang2018] C.-Z. A. Huang, A. Vaswani, J. Uszkoreit, N. Shazeer, I. Simon, C. Hawthorne, et al. Music Transformer. arXiv, 2018. https://arxiv.org/abs/1809.04281
+- [Huang2020] Y.-S. Huang, Y.-H. Yang. Pop Music Transformer: Beat-based Modeling and Generation of Expressive Pop Piano Compositions. ACM Multimedia 2020. https://arxiv.org/abs/2002.00212
+- [Inan2017] H. Inan, K. Khosravi, R. Socher. Tying Word Vectors and Word Classifiers: A Loss Framework for Language Modeling. arXiv, 2016. https://arxiv.org/abs/1611.01462
+- [Kingma2014] D. P. Kingma, J. Ba. Adam: A Method for Stochastic Optimization. ICLR 2015. https://arxiv.org/abs/1412.6980
+- [Krueger] B. Krueger. Classical Piano Midi Page. http://www.piano-midi.de ; licence page (archived 2025-01-09): https://web.archive.org/web/20250109034511/http://piano-midi.de/copy.htm
+- [Melis2017] G. Melis, C. Dyer, P. Blunsom. On the State of the Art of Evaluation in Neural Language Models. arXiv, 2017. https://arxiv.org/abs/1707.05589
+- [Merity2017] S. Merity, N. S. Keskar, R. Socher. Regularizing and Optimizing LSTM Language Models. arXiv, 2017. https://arxiv.org/abs/1708.02182
+- [Mittal2021] G. Mittal, J. Engel, C. Hawthorne, I. Simon. Symbolic Music Generation with Diffusion Models. ISMIR 2021. https://arxiv.org/abs/2103.16091
+- [Oore2018] S. Oore, I. Simon, S. Dieleman, D. Eck, K. Simonyan. This Time with Feeling: Learning Expressive Musical Performance. arXiv, 2018. https://arxiv.org/abs/1808.03715
+- [Pascanu2013] R. Pascanu, T. Mikolov, Y. Bengio. On the difficulty of training Recurrent Neural Networks. arXiv, 2012. https://arxiv.org/abs/1211.5063
+- [Press2017] O. Press, L. Wolf. Using the Output Embedding to Improve Language Models. EACL 2017. https://arxiv.org/abs/1608.05859
+- [Roberts2018] A. Roberts, J. Engel, C. Raffel, C. Hawthorne, D. Eck. A Hierarchical Latent Vector Model for Learning Long-Term Structure in Music. ICML 2018. https://arxiv.org/abs/1803.05428
+- [Skuli2017] S. Skúli. How to Generate Music using a LSTM Neural Network in Keras. Towards Data Science, 7 December 2017. https://towardsdatascience.com/how-to-generate-music-using-a-lstmneural-network-in-keras-68786834d4c5 ; code: https://github.com/Skuldur/Classical-Piano-Composer
+- [Vaswani2017] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, I. Polosukhin. Attention Is All You Need. arXiv, 2017. https://arxiv.org/abs/1706.03762
+- [Waite2016] E. Waite. Generating Long-Term Structure in Songs and Stories. Magenta blog, 15 July 2016. https://magenta.tensorflow.org/2016/07/15/lookback-rnn-attention-rnn
+- [Xu2026] J. Xu, X. Tang, H. Yang, H. Zhang, S. Yuan, et al. Efficient Long-Sequence Diffusion Modeling for Symbolic Music Generation. arXiv, 2026. https://arxiv.org/abs/2603.00576
+- [Yang2020] L.-C. Yang, A. Lerch. On the evaluation of generative models in music. Neural Computing and Applications 32(9):4773–4784, 2020. https://doi.org/10.1007/s00521-018-3849-7
+- [Yu2022] B. Yu, P. Lu, R. Wang, W. Hu, X. Tan, et al. Museformer: Transformer with Fine- and Coarse-Grained Attention for Music Generation. NeurIPS 2022. https://arxiv.org/abs/2210.10349
+- [Zaremba2014] W. Zaremba, I. Sutskever, O. Vinyals. Recurrent Neural Network Regularization. arXiv, 2014. https://arxiv.org/abs/1409.2329

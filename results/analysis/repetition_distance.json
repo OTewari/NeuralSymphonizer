@@ -1,0 +1,10 @@
+{
+  "pieces": 10,
+  "patterns": 11436,
+  "repeat_share": 0.66,
+  "median_distance_onsets": 48,
+  "median_distance_tokens": 240,
+  "share_of_patterns_repeating_from_more_than_64_tokens_back": 0.469,
+  "share_of_patterns_repeating_from_more_than_256_tokens_back": 0.323,
+  "share_of_patterns_repeating_from_more_than_1024_tokens_back": 0.169
+}

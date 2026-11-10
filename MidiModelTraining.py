@@ -1,6 +1,6 @@
 """Train an LSTM to predict the next event token in classical piano MIDI files.
 
-Pipeline (stage 2, see PROGRESSION.md):
+Pipeline (stages 2-5, see PAPER.md):
   1. Read every note of every MIDI file in --midi-dir with pretty_midi and turn it into
      event tokens (music_tokens.py): time shifts, exact pitches with octave, note lengths.
   2. Hold out a fraction of whole pieces for validation (same seeded split as stage 1).
