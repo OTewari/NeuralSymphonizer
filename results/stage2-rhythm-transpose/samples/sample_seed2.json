@@ -1,0 +1,21 @@
+{
+  "tokens": 790,
+  "notes": 300,
+  "onsets": 187,
+  "chord_onsets": 80,
+  "distinct_pitches": 52,
+  "pitch_range": [
+    25,
+    79
+  ],
+  "distinct_note_lengths": 9,
+  "seconds": 60.8,
+  "longest_run_of_identical_onsets": 3,
+  "ill_formed_tokens": 9,
+  "prompt_piece": "mz_311_1_format0.mid",
+  "prompt_start": 791,
+  "seed": 2,
+  "temperature": 1.0,
+  "bpm": 100.0,
+  "output": "results/stage2-rhythm-transpose/samples/sample_seed2.mid"
+}

@@ -1,0 +1,21 @@
+{
+  "tokens": 752,
+  "notes": 300,
+  "onsets": 153,
+  "chord_onsets": 75,
+  "distinct_pitches": 54,
+  "pitch_range": [
+    25,
+    106
+  ],
+  "distinct_note_lengths": 15,
+  "seconds": 36.6,
+  "longest_run_of_identical_onsets": 2,
+  "ill_formed_tokens": 4,
+  "prompt_piece": "chpn_op35_4_format0.mid",
+  "prompt_start": 2914,
+  "seed": 1,
+  "temperature": 1.0,
+  "bpm": 100.0,
+  "output": "results/stage2-rhythm-transpose/samples/sample_seed1.mid"
+}
