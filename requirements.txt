@@ -1,13 +1,12 @@
 # Direct dependencies only. Tested on Python 3.12.6 (Windows 11) with:
-#   keras 3.15.1 (PyTorch backend), torch 2.11.0+cu128, music21 10.5.2,
+#   keras 3.15.1 (PyTorch backend), torch 2.11.0+cu128,
 #   numpy 2.5.4, matplotlib 3.11.2
 # For an NVIDIA GPU, install torch from the CUDA index first (see README.md).
 keras~=3.15
 torch~=2.11
-music21~=10.5
 numpy>=2.0
 matplotlib>=3.8
-# Audio rendering (render_audio.py), tested with pretty_midi 0.2.11.post0,
+# MIDI reading/writing and audio rendering, tested with pretty_midi 0.2.11.post0,
 # tinysoundfont 0.3.7, imageio-ffmpeg 0.8.1. On Linux, tinysoundfont's pyaudio
 # dependency builds from source and needs PortAudio headers (portaudio19-dev).
 pretty_midi>=0.2.11
