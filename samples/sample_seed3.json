@@ -1,0 +1,19 @@
+{
+  "tokens": 200,
+  "distinct_tokens": 78,
+  "chord_tokens": 144,
+  "most_common_token": "4.8",
+  "most_common_share": 0.05,
+  "longest_repeat_run": 2,
+  "midi_note_events": 321,
+  "distinct_pitches": 31,
+  "pitch_range": [
+    "B2",
+    "E-6"
+  ],
+  "prompt_piece": "chpn_op53_format0.mid",
+  "prompt_start": 1213,
+  "seed": 3,
+  "temperature": 1.0,
+  "output": "samples/sample_seed3.mid"
+}
